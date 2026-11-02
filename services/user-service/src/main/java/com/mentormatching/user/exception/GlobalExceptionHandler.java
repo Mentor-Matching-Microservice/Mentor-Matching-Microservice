@@ -351,7 +351,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Xử lý AuthenticationException đi tới MVC advice bằng response 401 và Basic challenge.
+     * Xử lý AuthenticationException đi tới MVC advice bằng response 401 và Bearer challenge.
      * Lỗi phát sinh trong security filter chain dùng ProblemAuthenticationEntryPoint riêng.
      *
      * @param ex exception cần xử lý
@@ -361,7 +361,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<Object> handleAuthentication(AuthenticationException ex, HttpServletRequest request) {
         HttpHeaders headers = new HttpHeaders();
-        headers.set(HttpHeaders.WWW_AUTHENTICATE, "Basic realm=\"Mentor Matching\"");
+        headers.set(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
         return response(problems.standard(HttpStatus.UNAUTHORIZED, request), headers, HttpStatus.UNAUTHORIZED);
     }
 
