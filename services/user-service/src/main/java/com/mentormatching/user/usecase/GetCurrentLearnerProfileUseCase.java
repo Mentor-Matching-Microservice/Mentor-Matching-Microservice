@@ -6,12 +6,14 @@ import java.util.UUID;
 import com.mentormatching.user.dto.LearnerProfileDetails;
 import com.mentormatching.user.repository.LearnerProfileRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Đọc hồ sơ học viên, không tự tạo hồ sơ khi chưa tồn tại.
  */
 @Service
+@PreAuthorize("hasRole('LEANER')")
 @Transactional(readOnly = true)
 public class GetCurrentLearnerProfileUseCase {
 
@@ -22,7 +24,7 @@ public class GetCurrentLearnerProfileUseCase {
     }
 
     /**
-     * Caller cung cấp userId từ danh tính đã xác thực; không yêu cầu role học viên.
+     * Caller cung cấp userId từ danh tính đã xác thực; yêu cầu role LEANER.
      */
     public LearnerProfileDetails execute(UUID userId) {
         Objects.requireNonNull(userId, "userId is required");

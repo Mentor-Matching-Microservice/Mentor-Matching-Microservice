@@ -8,12 +8,14 @@ import com.mentormatching.user.exception.ApiException;
 import com.mentormatching.user.repository.UserProfileRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Đọc hồ sơ chung của người dùng hiện tại.
  */
 @Service
+@PreAuthorize("hasRole('LEANER')")
 @Transactional(readOnly = true)
 public class GetCurrentUserProfileUseCase {
 

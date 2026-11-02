@@ -12,6 +12,7 @@ import jakarta.validation.Validator;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
@@ -21,6 +22,7 @@ import static org.springframework.http.HttpStatus.CONFLICT;
  * Tạo hoặc cập nhật hồ sơ chung bằng UUID tài khoản do auth-service cấp.
  */
 @Service
+@PreAuthorize("hasRole('LEANER')")
 public class UpsertCurrentUserProfileUseCase {
 
     private final UserProfileRepository users;

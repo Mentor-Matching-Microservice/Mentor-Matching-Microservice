@@ -13,6 +13,7 @@ import com.mentormatching.user.repository.LearnerProfileRepository;
 import com.mentormatching.user.repository.UserProfileRepository;
 import jakarta.validation.Validator;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.springframework.http.HttpStatus.*;
@@ -21,6 +22,7 @@ import static org.springframework.http.HttpStatus.*;
  * Tạo hoặc thay thế hồ sơ học viên của người dùng hiện tại.
  */
 @Service
+@PreAuthorize("hasRole('LEANER')")
 public class UpsertCurrentLearnerProfileUseCase {
 
     private final LearnerProfileRepository learners;
@@ -36,7 +38,7 @@ public class UpsertCurrentLearnerProfileUseCase {
 
     /**
      * Caller cung cấp userId từ danh tính đã xác thực, không lấy từ request body.
-     * Không giới hạn role; gradeId chỉ được kiểm tra định dạng, chưa tra cứu catalog.
+     * Yêu cầu role LEANER; gradeId chỉ được kiểm tra định dạng, chưa tra cứu catalog.
      */
     @Transactional
     public LearnerProfileDetails execute(UUID userId, UpsertCurrentLearnerProfileCommand command) {
