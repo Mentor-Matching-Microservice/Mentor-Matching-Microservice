@@ -12,7 +12,6 @@ import com.mentormatching.user.exception.ProblemResponses;
 
 /**
  * Trả lỗi xác thực 401 dạng ProblemDetail từ Spring Security filter chain.
- * Cấu hình hiện tại dùng HTTP Basic; challenge cần đổi khi triển khai cơ chế Bearer/JWT.
  */
 @Component
 public class ProblemAuthenticationEntryPoint implements AuthenticationEntryPoint {
@@ -25,7 +24,7 @@ public class ProblemAuthenticationEntryPoint implements AuthenticationEntryPoint
     public ProblemAuthenticationEntryPoint(ProblemResponses problems) { this.problems = problems; }
 
     /**
-     * Thiết lập HTTP Basic challenge và trả body 401 chuẩn, không dùng nội dung exception làm detail.
+     * Thiết lập Bearer challenge và trả body 401 chuẩn, không dùng nội dung exception làm detail.
      * Được gọi khi Spring Security yêu cầu xác thực hoặc xử lý xác thực thất bại.
      *
      * @param request HTTP request hiện tại
@@ -36,7 +35,7 @@ public class ProblemAuthenticationEntryPoint implements AuthenticationEntryPoint
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException ex)
             throws IOException {
-        response.setHeader(HttpHeaders.WWW_AUTHENTICATE, "Basic realm=\"Mentor Matching\"");
+        response.setHeader(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
         problems.write(HttpStatus.UNAUTHORIZED, request, response);
     }
 }
