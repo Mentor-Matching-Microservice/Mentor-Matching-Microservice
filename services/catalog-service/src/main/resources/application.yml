@@ -26,3 +26,9 @@ management:
   endpoint:
     health:
       show-details: never
+
+catalog:
+  jwt:
+    issuer: ${AUTH_JWT_ISSUER:auth-service}
+    audience: ${AUTH_JWT_AUDIENCE}
+    public-key-location: ${AUTH_JWT_PUBLIC_KEY_LOCATION}
