@@ -1,4 +1,4 @@
--- Optional local/demo seed, NOT a Flyway migration. Run after V1.
+-- Optional local/demo seed, NOT a Flyway migration. Run after V2.
 -- First load export_mentor_accounts.sql OUTPUT in the same connection.
 -- Fictional profiles/documents; URLs on example.invalid intentionally do not resolve.
 -- subject_grade_id 1..10 are demo references, not verified catalog mappings.
@@ -112,9 +112,9 @@ WHERE NOT EXISTS (
 DROP TEMPORARY TABLE tmp_mentor_highlight_options;
 DROP TEMPORARY TABLE tmp_personality_options;
 
-INSERT INTO mentor_profiles (user_id, avatar_url, gender, headline, introduction, teaching_style,
+INSERT INTO mentor_profiles (user_id, full_name, avatar_url, gender, headline, introduction, teaching_style,
     experience_years, current_position, workplace, education, major, meeting_type, approval_status, approval_note)
-SELECT a.user_id, CONCAT('https://example.invalid/mentors/', d.seq, '/avatar.png'), d.gender,
+SELECT a.user_id, d.full_name, CONCAT('https://example.invalid/mentors/', d.seq, '/avatar.png'), d.gender,
     CONCAT('Mentor ', d.subject_name, ' — lộ trình học cá nhân hóa'),
     CONCAT('Hồ sơ minh họa của ', d.full_name, '. Đồng hành cùng học viên học ', d.subject_name,
         ', củng cố nền tảng và luyện tập theo mục tiêu.'),

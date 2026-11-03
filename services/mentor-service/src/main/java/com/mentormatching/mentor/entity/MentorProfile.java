@@ -37,6 +37,10 @@ public class MentorProfile {
     @Column(name = "user_id", nullable = false, unique = true, columnDefinition = "BINARY(16)", updatable = false)
     private UUID userId;
 
+    /** Display-name copy owned by user-service; nullable until synchronized. */
+    @Column(name = "full_name", length = 255)
+    private String fullName;
+
     @Column(name = "avatar_url", nullable = false, columnDefinition = "TEXT")
     private String avatarUrl;
 

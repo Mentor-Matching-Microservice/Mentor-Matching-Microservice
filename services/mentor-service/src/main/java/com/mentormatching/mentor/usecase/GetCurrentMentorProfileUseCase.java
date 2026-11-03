@@ -35,6 +35,7 @@ public class GetCurrentMentorProfileUseCase {
         return MentorProfileDetails.builder()
                 .id(profile.getId())
                 .userId(profile.getUserId())
+                .fullName(profile.getFullName())
                 .avatarUrl(profile.getAvatarUrl())
                 .avatarMediaId(profile.getAvatarMediaId())
                 .gender(profile.getGender())

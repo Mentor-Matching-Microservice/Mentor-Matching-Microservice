@@ -13,6 +13,7 @@ import lombok.Builder;
 public record MentorProfileDetails(
         Long id,
         UUID userId,
+        String fullName,
         String avatarUrl,
         Long avatarMediaId,
         MentorGender gender,
