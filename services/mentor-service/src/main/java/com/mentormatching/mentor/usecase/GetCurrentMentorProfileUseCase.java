@@ -2,7 +2,7 @@ package com.mentormatching.mentor.usecase;
 
 import java.util.UUID;
 
-import com.mentormatching.mentor.dto.MentorProfileDetails;
+import com.mentormatching.mentor.dto.response.MentorProfileDetails;
 import com.mentormatching.mentor.exception.ApiException;
 import com.mentormatching.mentor.repository.MentorProfileRepository;
 import org.springframework.http.HttpStatus;

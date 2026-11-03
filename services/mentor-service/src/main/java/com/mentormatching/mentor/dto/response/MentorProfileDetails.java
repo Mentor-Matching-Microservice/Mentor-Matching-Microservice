@@ -1,4 +1,4 @@
-package com.mentormatching.mentor.dto;
+package com.mentormatching.mentor.dto.response;
 
 import java.time.Instant;
 import java.util.UUID;
