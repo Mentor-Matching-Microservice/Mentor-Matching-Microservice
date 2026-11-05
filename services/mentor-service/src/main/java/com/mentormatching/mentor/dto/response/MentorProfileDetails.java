@@ -7,12 +7,14 @@ import com.mentormatching.mentor.entity.MeetingType;
 import com.mentormatching.mentor.entity.MentorApprovalStatus;
 import com.mentormatching.mentor.entity.MentorGender;
 import lombok.Builder;
+import com.mentormatching.mentor.entity.AccountStatus;
 
 /** Current mentor profile data owned by mentor-service. */
 @Builder
 public record MentorProfileDetails(
         Long id,
         UUID userId,
+        AccountStatus accountStatus,
         String fullName,
         String avatarUrl,
         Long avatarMediaId,
