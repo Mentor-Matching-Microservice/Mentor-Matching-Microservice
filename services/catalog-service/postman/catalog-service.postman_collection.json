@@ -1,0 +1,1722 @@
+{
+  "info": {
+    "_postman_id": "8e1790a1-9394-4262-be75-3f524401826d",
+    "name": "Mentor Matching - Catalog Service",
+    "description": "Run folders in order. Public reads need no token. Admin tests create uniquely named records and clean them up. See postman/README.md.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "variable": [
+    {
+      "key": "invalidToken",
+      "value": "invalid.jwt.for.test",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Public reads and discover IDs",
+      "item": [
+        {
+          "name": "01 Catalog options - discover IDs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/catalog/options",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"Success envelope\", () => {",
+                  "    pm.expect(body.status).to.eql(200);",
+                  "    pm.expect(body.code).to.eql(\"SUCCESS\");",
+                  "    pm.expect(body.success).to.eql(true);",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"Seed catalog is available\", () => {",
+                  "    [\"categories\", \"subjects\", \"grades\", \"subjectGrades\"].forEach(key => pm.expect(body.data[key]).to.be.an(\"array\").that.is.not.empty);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    const mapping = body.data.subjectGrades.find(item => item.gradeId !== null);",
+                  "    pm.expect(mapping, \"a subject-grade with a grade\").to.exist;",
+                  "    pm.collectionVariables.set(\"categoryId\", body.data.categories[0].id);",
+                  "    pm.collectionVariables.set(\"subjectGradeId\", mapping.id);",
+                  "    pm.collectionVariables.set(\"subjectId\", mapping.subjectId);",
+                  "    pm.collectionVariables.set(\"gradeId\", mapping.gradeId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "02 Subject-grade IDs - no filters",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/catalog/subject-grades/ids",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"Success envelope\", () => {",
+                  "    pm.expect(body.status).to.eql(200);",
+                  "    pm.expect(body.code).to.eql(\"SUCCESS\");",
+                  "    pm.expect(body.success).to.eql(true);",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"No filters returns empty list\", () => pm.expect(body.data).to.eql([]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "03 Subject-grade IDs - both filters",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/catalog/subject-grades/ids?subjectId={{subjectId}}&gradeId={{gradeId}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"subjectId\")) { pm.execution.skipRequest(); throw new Error(\"Missing subjectId; follow postman/README.md and run requests in order.\"); }",
+                  "if (!pm.variables.get(\"gradeId\")) { pm.execution.skipRequest(); throw new Error(\"Missing gradeId; follow postman/README.md and run requests in order.\"); }",
+                  "if (!pm.variables.get(\"subjectGradeId\")) { pm.execution.skipRequest(); throw new Error(\"Missing subjectGradeId; follow postman/README.md and run requests in order.\"); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"Success envelope\", () => {",
+                  "    pm.expect(body.status).to.eql(200);",
+                  "    pm.expect(body.code).to.eql(\"SUCCESS\");",
+                  "    pm.expect(body.success).to.eql(true);",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"Contains discovered mapping\", () => pm.expect(body.data).to.include(Number(pm.variables.get(\"subjectGradeId\"))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 Subject-grade summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/catalog/subject-grades/{{subjectGradeId}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"subjectGradeId\")) { pm.execution.skipRequest(); throw new Error(\"Missing subjectGradeId; follow postman/README.md and run requests in order.\"); }",
+                  "if (!pm.variables.get(\"subjectId\")) { pm.execution.skipRequest(); throw new Error(\"Missing subjectId; follow postman/README.md and run requests in order.\"); }",
+                  "if (!pm.variables.get(\"gradeId\")) { pm.execution.skipRequest(); throw new Error(\"Missing gradeId; follow postman/README.md and run requests in order.\"); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"Success envelope\", () => {",
+                  "    pm.expect(body.status).to.eql(200);",
+                  "    pm.expect(body.code).to.eql(\"SUCCESS\");",
+                  "    pm.expect(body.success).to.eql(true);",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"Summary matches mapping\", () => {",
+                  "    pm.expect(body.data.subjectGradeId).to.eql(Number(pm.variables.get(\"subjectGradeId\")));",
+                  "    pm.expect(body.data.subjectId).to.eql(Number(pm.variables.get(\"subjectId\")));",
+                  "    pm.expect(body.data.gradeId).to.eql(Number(pm.variables.get(\"gradeId\")));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "05 Cities - discover city ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/locations/cities",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"Success envelope\", () => {",
+                  "    pm.expect(body.status).to.eql(200);",
+                  "    pm.expect(body.code).to.eql(\"SUCCESS\");",
+                  "    pm.expect(body.success).to.eql(true);",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"Cities are available\", () => pm.expect(body.data).to.be.an(\"array\").that.is.not.empty);",
+                  "if (pm.response.code === 200 && body.data.length) pm.collectionVariables.set(\"cityId\", body.data[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 Cities - Vietnamese accent-insensitive search",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/locations/cities?search=DA%20NANG",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"Success envelope\", () => {",
+                  "    pm.expect(body.status).to.eql(200);",
+                  "    pm.expect(body.code).to.eql(\"SUCCESS\");",
+                  "    pm.expect(body.success).to.eql(true);",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"Finds Đà Nẵng\", () => pm.expect(body.data.map(row => row.name)).to.include(\"Thành phố Đà Nẵng\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "07 City summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/locations/cities/{{cityId}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"cityId\")) { pm.execution.skipRequest(); throw new Error(\"Missing cityId; follow postman/README.md and run requests in order.\"); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"Success envelope\", () => {",
+                  "    pm.expect(body.status).to.eql(200);",
+                  "    pm.expect(body.code).to.eql(\"SUCCESS\");",
+                  "    pm.expect(body.success).to.eql(true);",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"City ID matches\", () => pm.expect(body.data.id).to.eql(Number(pm.variables.get(\"cityId\"))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "08 Districts - discover district ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/locations/cities/{{cityId}}/districts",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"cityId\")) { pm.execution.skipRequest(); throw new Error(\"Missing cityId; follow postman/README.md and run requests in order.\"); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"Success envelope\", () => {",
+                  "    pm.expect(body.status).to.eql(200);",
+                  "    pm.expect(body.code).to.eql(\"SUCCESS\");",
+                  "    pm.expect(body.success).to.eql(true);",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"Districts belong to selected city\", () => {",
+                  "    pm.expect(body.data).to.be.an(\"array\").that.is.not.empty;",
+                  "    body.data.forEach(row => pm.expect(row.cityId).to.eql(Number(pm.variables.get(\"cityId\"))));",
+                  "});",
+                  "if (pm.response.code === 200 && body.data.length) pm.collectionVariables.set(\"districtId\", body.data[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "09 District summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/locations/districts/{{districtId}}",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"districtId\")) { pm.execution.skipRequest(); throw new Error(\"Missing districtId; follow postman/README.md and run requests in order.\"); }",
+                  "if (!pm.variables.get(\"cityId\")) { pm.execution.skipRequest(); throw new Error(\"Missing cityId; follow postman/README.md and run requests in order.\"); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"Success envelope\", () => {",
+                  "    pm.expect(body.status).to.eql(200);",
+                  "    pm.expect(body.code).to.eql(\"SUCCESS\");",
+                  "    pm.expect(body.success).to.eql(true);",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"District parent matches\", () => pm.expect(body.data.cityId).to.eql(Number(pm.variables.get(\"cityId\"))));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Public validation errors",
+      "item": [
+        {
+          "name": "Invalid ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/locations/cities/0",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"ProblemDetail contract\", () => {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "    pm.expect(body.status).to.eql(400);",
+                  "    pm.expect(body.code).to.eql(\"INVALID_ID\");",
+                  "    pm.expect(body.requestId).to.eql(pm.response.headers.get(\"X-Request-ID\"));",
+                  "    pm.expect(body.type).to.match(/^urn:mentor-matching:problem:/);",
+                  "    pm.expect(body.instance).to.be.a(\"string\");",
+                  "    pm.expect(body).not.to.have.property(\"stackTrace\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Malformed ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/locations/cities/not-a-number",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"ProblemDetail contract\", () => {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "    pm.expect(body.status).to.eql(400);",
+                  "    pm.expect(body.code).to.eql(\"INVALID_REQUEST\");",
+                  "    pm.expect(body.requestId).to.eql(pm.response.headers.get(\"X-Request-ID\"));",
+                  "    pm.expect(body.type).to.match(/^urn:mentor-matching:problem:/);",
+                  "    pm.expect(body.instance).to.be.a(\"string\");",
+                  "    pm.expect(body).not.to.have.property(\"stackTrace\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "City not found",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/locations/cities/9223372036854775807",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"ProblemDetail contract\", () => {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "    pm.expect(body.status).to.eql(404);",
+                  "    pm.expect(body.code).to.eql(\"CITY_NOT_FOUND\");",
+                  "    pm.expect(body.requestId).to.eql(pm.response.headers.get(\"X-Request-ID\"));",
+                  "    pm.expect(body.type).to.match(/^urn:mentor-matching:problem:/);",
+                  "    pm.expect(body.instance).to.be.a(\"string\");",
+                  "    pm.expect(body).not.to.have.property(\"stackTrace\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "District not found",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/locations/districts/9223372036854775807",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"ProblemDetail contract\", () => {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "    pm.expect(body.status).to.eql(404);",
+                  "    pm.expect(body.code).to.eql(\"DISTRICT_NOT_FOUND\");",
+                  "    pm.expect(body.requestId).to.eql(pm.response.headers.get(\"X-Request-ID\"));",
+                  "    pm.expect(body.type).to.match(/^urn:mentor-matching:problem:/);",
+                  "    pm.expect(body.instance).to.be.a(\"string\");",
+                  "    pm.expect(body).not.to.have.property(\"stackTrace\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Subject-grade not found",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/catalog/subject-grades/9223372036854775807",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"ProblemDetail contract\", () => {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "    pm.expect(body.status).to.eql(404);",
+                  "    pm.expect(body.code).to.eql(\"SUBJECT_GRADE_NOT_FOUND\");",
+                  "    pm.expect(body.requestId).to.eql(pm.response.headers.get(\"X-Request-ID\"));",
+                  "    pm.expect(body.type).to.match(/^urn:mentor-matching:problem:/);",
+                  "    pm.expect(body.instance).to.be.a(\"string\");",
+                  "    pm.expect(body).not.to.have.property(\"stackTrace\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid grade filter",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/catalog/subject-grades/ids?gradeId=0",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"ProblemDetail contract\", () => {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "    pm.expect(body.status).to.eql(400);",
+                  "    pm.expect(body.code).to.eql(\"INVALID_CATALOG_QUERY\");",
+                  "    pm.expect(body.requestId).to.eql(pm.response.headers.get(\"X-Request-ID\"));",
+                  "    pm.expect(body.type).to.match(/^urn:mentor-matching:problem:/);",
+                  "    pm.expect(body.instance).to.be.a(\"string\");",
+                  "    pm.expect(body).not.to.have.property(\"stackTrace\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Authentication and authorization",
+      "item": [
+        {
+          "name": "No token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/catalog/grades",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Permission check only\", \"levelGroup\": \"PRIMARY\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"ProblemDetail contract\", () => {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "    pm.expect(body.status).to.eql(401);",
+                  "    pm.expect(body.code).to.eql(\"AUTHENTICATION_REQUIRED\");",
+                  "    pm.expect(body.requestId).to.eql(pm.response.headers.get(\"X-Request-ID\"));",
+                  "    pm.expect(body.type).to.match(/^urn:mentor-matching:problem:/);",
+                  "    pm.expect(body.instance).to.be.a(\"string\");",
+                  "    pm.expect(body).not.to.have.property(\"stackTrace\");",
+                  "});",
+                  "pm.test(\"Bearer challenge\", () => pm.expect(pm.response.headers.get(\"WWW-Authenticate\")).to.eql(\"Bearer\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/catalog/grades",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{invalidToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Permission check only\", \"levelGroup\": \"PRIMARY\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"ProblemDetail contract\", () => {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "    pm.expect(body.status).to.eql(401);",
+                  "    pm.expect(body.code).to.eql(\"AUTHENTICATION_REQUIRED\");",
+                  "    pm.expect(body.requestId).to.eql(pm.response.headers.get(\"X-Request-ID\"));",
+                  "    pm.expect(body.type).to.match(/^urn:mentor-matching:problem:/);",
+                  "    pm.expect(body.instance).to.be.a(\"string\");",
+                  "    pm.expect(body).not.to.have.property(\"stackTrace\");",
+                  "});",
+                  "pm.test(\"Bearer challenge\", () => pm.expect(pm.response.headers.get(\"WWW-Authenticate\")).to.eql(\"Bearer\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Non-admin token",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/catalog/grades/9223372036854775807",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{nonAdminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Permission check only\", \"levelGroup\": \"PRIMARY\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"nonAdminToken\")) { pm.execution.skipRequest(); throw new Error(\"Missing nonAdminToken; follow postman/README.md and run requests in order.\"); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"ProblemDetail contract\", () => {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "    pm.expect(body.status).to.eql(403);",
+                  "    pm.expect(body.code).to.eql(\"ACCESS_DENIED\");",
+                  "    pm.expect(body.requestId).to.eql(pm.response.headers.get(\"X-Request-ID\"));",
+                  "    pm.expect(body.type).to.match(/^urn:mentor-matching:problem:/);",
+                  "    pm.expect(body.instance).to.be.a(\"string\");",
+                  "    pm.expect(body).not.to.have.property(\"stackTrace\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 - Admin validation errors",
+      "item": [
+        {
+          "name": "Blank subject",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/catalog/subjects",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"categoryId\": \"{{categoryId}}\", \"name\": \"  \"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"adminToken\")) { pm.execution.skipRequest(); throw new Error(\"Missing adminToken; follow postman/README.md and run requests in order.\"); }",
+                  "if (!pm.variables.get(\"categoryId\")) { pm.execution.skipRequest(); throw new Error(\"Missing categoryId; follow postman/README.md and run requests in order.\"); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"ProblemDetail contract\", () => {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "    pm.expect(body.status).to.eql(400);",
+                  "    pm.expect(body.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    pm.expect(body.requestId).to.eql(pm.response.headers.get(\"X-Request-ID\"));",
+                  "    pm.expect(body.type).to.match(/^urn:mentor-matching:problem:/);",
+                  "    pm.expect(body.instance).to.be.a(\"string\");",
+                  "    pm.expect(body).not.to.have.property(\"stackTrace\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Missing level group",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/catalog/grades",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Invalid grade\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"adminToken\")) { pm.execution.skipRequest(); throw new Error(\"Missing adminToken; follow postman/README.md and run requests in order.\"); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"ProblemDetail contract\", () => {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "    pm.expect(body.status).to.eql(400);",
+                  "    pm.expect(body.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    pm.expect(body.requestId).to.eql(pm.response.headers.get(\"X-Request-ID\"));",
+                  "    pm.expect(body.type).to.match(/^urn:mentor-matching:problem:/);",
+                  "    pm.expect(body.instance).to.be.a(\"string\");",
+                  "    pm.expect(body).not.to.have.property(\"stackTrace\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid enum",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/catalog/grades",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Invalid grade\", \"levelGroup\": \"UNKNOWN\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"adminToken\")) { pm.execution.skipRequest(); throw new Error(\"Missing adminToken; follow postman/README.md and run requests in order.\"); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"ProblemDetail contract\", () => {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "    pm.expect(body.status).to.eql(400);",
+                  "    pm.expect(body.code).to.eql(\"INVALID_REQUEST\");",
+                  "    pm.expect(body.requestId).to.eql(pm.response.headers.get(\"X-Request-ID\"));",
+                  "    pm.expect(body.type).to.match(/^urn:mentor-matching:problem:/);",
+                  "    pm.expect(body.instance).to.be.a(\"string\");",
+                  "    pm.expect(body).not.to.have.property(\"stackTrace\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Malformed JSON",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/catalog/grades",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"adminToken\")) { pm.execution.skipRequest(); throw new Error(\"Missing adminToken; follow postman/README.md and run requests in order.\"); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"ProblemDetail contract\", () => {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "    pm.expect(body.status).to.eql(400);",
+                  "    pm.expect(body.code).to.eql(\"INVALID_REQUEST\");",
+                  "    pm.expect(body.requestId).to.eql(pm.response.headers.get(\"X-Request-ID\"));",
+                  "    pm.expect(body.type).to.match(/^urn:mentor-matching:problem:/);",
+                  "    pm.expect(body.instance).to.be.a(\"string\");",
+                  "    pm.expect(body).not.to.have.property(\"stackTrace\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 - Admin CRUD - creates and cleans up temporary records",
+      "item": [
+        {
+          "name": "Create subject",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/catalog/subjects",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"  {{testSubjectName}}  \", \"categoryId\": \"{{categoryId}}\", \"description\": \"  Postman temporary record  \"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"adminToken\")) { pm.execution.skipRequest(); throw new Error(\"Missing adminToken; follow postman/README.md and run requests in order.\"); }",
+                  "if (!pm.variables.get(\"categoryId\")) { pm.execution.skipRequest(); throw new Error(\"Missing categoryId; follow postman/README.md and run requests in order.\"); }",
+                  "if (pm.collectionVariables.get(\"createdSubjectId\")) {",
+                  "    pm.execution.skipRequest();",
+                  "    throw new Error(\"An earlier subject test record still exists. Run cleanup first; do not overwrite its ID.\");",
+                  "}",
+                  "pm.collectionVariables.set(\"testSubjectName\", \"PMS-\" + pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"Success envelope\", () => {",
+                  "    pm.expect(body.status).to.eql(200);",
+                  "    pm.expect(body.code).to.eql(\"SUCCESS\");",
+                  "    pm.expect(body.success).to.eql(true);",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});",
+                  "if (pm.response.code === 200 && Number.isSafeInteger(body.data.id) && body.data.id > 0) pm.collectionVariables.set(\"createdSubjectId\", body.data.id);",
+                  "pm.test(\"Created normalized record\", () => {",
+                  "    pm.expect(body.data.name).to.eql(pm.variables.get(\"testSubjectName\"));",
+                  "    pm.expect(body.data.id).to.be.a(\"number\").above(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Duplicate subject name",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/catalog/subjects",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"  {{testSubjectName}}  \", \"categoryId\": \"{{categoryId}}\", \"description\": \"  Postman temporary record  \"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"adminToken\")) { pm.execution.skipRequest(); throw new Error(\"Missing adminToken; follow postman/README.md and run requests in order.\"); }",
+                  "if (!pm.variables.get(\"createdSubjectId\")) { pm.execution.skipRequest(); throw new Error(\"Missing createdSubjectId; follow postman/README.md and run requests in order.\"); }",
+                  "if (!pm.variables.get(\"testSubjectName\")) { pm.execution.skipRequest(); throw new Error(\"Missing testSubjectName; follow postman/README.md and run requests in order.\"); }",
+                  "if (!pm.variables.get(\"categoryId\")) { pm.execution.skipRequest(); throw new Error(\"Missing categoryId; follow postman/README.md and run requests in order.\"); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"ProblemDetail contract\", () => {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "    pm.expect(body.status).to.eql(409);",
+                  "    pm.expect(body.code).to.eql(\"SUBJECT_NAME_ALREADY_EXISTS\");",
+                  "    pm.expect(body.requestId).to.eql(pm.response.headers.get(\"X-Request-ID\"));",
+                  "    pm.expect(body.type).to.match(/^urn:mentor-matching:problem:/);",
+                  "    pm.expect(body.instance).to.be.a(\"string\");",
+                  "    pm.expect(body).not.to.have.property(\"stackTrace\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update subject",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/catalog/subjects/{{createdSubjectId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"{{testSubjectName}}-edit\", \"categoryId\": \"{{categoryId}}\", \"description\": null}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"adminToken\")) { pm.execution.skipRequest(); throw new Error(\"Missing adminToken; follow postman/README.md and run requests in order.\"); }",
+                  "if (!pm.variables.get(\"createdSubjectId\")) { pm.execution.skipRequest(); throw new Error(\"Missing createdSubjectId; follow postman/README.md and run requests in order.\"); }",
+                  "if (!pm.variables.get(\"testSubjectName\")) { pm.execution.skipRequest(); throw new Error(\"Missing testSubjectName; follow postman/README.md and run requests in order.\"); }",
+                  "if (!pm.variables.get(\"categoryId\")) { pm.execution.skipRequest(); throw new Error(\"Missing categoryId; follow postman/README.md and run requests in order.\"); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"Success envelope\", () => {",
+                  "    pm.expect(body.status).to.eql(200);",
+                  "    pm.expect(body.code).to.eql(\"SUCCESS\");",
+                  "    pm.expect(body.success).to.eql(true);",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"Updated test record\", () => {",
+                  "    pm.expect(body.data.id).to.eql(Number(pm.variables.get(\"createdSubjectId\")));",
+                  "    pm.expect(body.data.name).to.eql(pm.variables.get(\"testSubjectName\") + \"-edit\");",
+                  "    pm.expect(body.data.description).to.eql(null);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create grade",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/catalog/grades",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"  {{testGradeName}}  \", \"levelGroup\": \"PRIMARY\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"adminToken\")) { pm.execution.skipRequest(); throw new Error(\"Missing adminToken; follow postman/README.md and run requests in order.\"); }",
+                  "if (pm.collectionVariables.get(\"createdGradeId\")) {",
+                  "    pm.execution.skipRequest();",
+                  "    throw new Error(\"An earlier grade test record still exists. Run cleanup first; do not overwrite its ID.\");",
+                  "}",
+                  "pm.collectionVariables.set(\"testGradeName\", \"PMG-\" + pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"Success envelope\", () => {",
+                  "    pm.expect(body.status).to.eql(200);",
+                  "    pm.expect(body.code).to.eql(\"SUCCESS\");",
+                  "    pm.expect(body.success).to.eql(true);",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});",
+                  "if (pm.response.code === 200 && Number.isSafeInteger(body.data.id) && body.data.id > 0) pm.collectionVariables.set(\"createdGradeId\", body.data.id);",
+                  "pm.test(\"Created normalized record\", () => {",
+                  "    pm.expect(body.data.name).to.eql(pm.variables.get(\"testGradeName\"));",
+                  "    pm.expect(body.data.id).to.be.a(\"number\").above(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Duplicate grade name",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/catalog/grades",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"  {{testGradeName}}  \", \"levelGroup\": \"PRIMARY\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"adminToken\")) { pm.execution.skipRequest(); throw new Error(\"Missing adminToken; follow postman/README.md and run requests in order.\"); }",
+                  "if (!pm.variables.get(\"createdGradeId\")) { pm.execution.skipRequest(); throw new Error(\"Missing createdGradeId; follow postman/README.md and run requests in order.\"); }",
+                  "if (!pm.variables.get(\"testGradeName\")) { pm.execution.skipRequest(); throw new Error(\"Missing testGradeName; follow postman/README.md and run requests in order.\"); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"ProblemDetail contract\", () => {",
+                  "    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/problem+json\");",
+                  "    pm.expect(body.status).to.eql(409);",
+                  "    pm.expect(body.code).to.eql(\"GRADE_NAME_ALREADY_EXISTS\");",
+                  "    pm.expect(body.requestId).to.eql(pm.response.headers.get(\"X-Request-ID\"));",
+                  "    pm.expect(body.type).to.match(/^urn:mentor-matching:problem:/);",
+                  "    pm.expect(body.instance).to.be.a(\"string\");",
+                  "    pm.expect(body).not.to.have.property(\"stackTrace\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update grade",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/catalog/grades/{{createdGradeId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"{{testGradeName}}-edit\", \"levelGroup\": \"SECONDARY\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"adminToken\")) { pm.execution.skipRequest(); throw new Error(\"Missing adminToken; follow postman/README.md and run requests in order.\"); }",
+                  "if (!pm.variables.get(\"createdGradeId\")) { pm.execution.skipRequest(); throw new Error(\"Missing createdGradeId; follow postman/README.md and run requests in order.\"); }",
+                  "if (!pm.variables.get(\"testGradeName\")) { pm.execution.skipRequest(); throw new Error(\"Missing testGradeName; follow postman/README.md and run requests in order.\"); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"Success envelope\", () => {",
+                  "    pm.expect(body.status).to.eql(200);",
+                  "    pm.expect(body.code).to.eql(\"SUCCESS\");",
+                  "    pm.expect(body.success).to.eql(true);",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"Updated test record\", () => {",
+                  "    pm.expect(body.data.id).to.eql(Number(pm.variables.get(\"createdGradeId\")));",
+                  "    pm.expect(body.data.name).to.eql(pm.variables.get(\"testGradeName\") + \"-edit\");",
+                  "    pm.expect(body.data.levelGroup).to.eql(\"SECONDARY\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 - Cleanup temporary records",
+      "item": [
+        {
+          "name": "Delete temporary subject",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/catalog/subjects/{{createdSubjectId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"adminToken\")) { pm.execution.skipRequest(); throw new Error(\"Missing adminToken; follow postman/README.md and run requests in order.\"); }",
+                  "if (!pm.variables.get(\"createdSubjectId\")) { pm.execution.skipRequest(); throw new Error(\"Missing createdSubjectId; follow postman/README.md and run requests in order.\"); }",
+                  "if (!pm.variables.get(\"testSubjectName\")) { pm.execution.skipRequest(); throw new Error(\"Missing testSubjectName; follow postman/README.md and run requests in order.\"); }",
+                  "if (!/^PMS-[0-9a-f-]{36}$/i.test(pm.variables.get(\"testSubjectName\")) || !/^[1-9][0-9]*$/.test(String(pm.variables.get(\"createdSubjectId\")))) {",
+                  "    pm.execution.skipRequest(); throw new Error(\"Invalid temporary record marker; refusing cleanup.\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"Success envelope\", () => {",
+                  "    pm.expect(body.status).to.eql(200);",
+                  "    pm.expect(body.code).to.eql(\"SUCCESS\");",
+                  "    pm.expect(body.success).to.eql(true);",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"Deleted successfully\", () => pm.expect(body.data).to.eql(null));",
+                  "if (pm.response.code === 200) {",
+                  "    pm.collectionVariables.set(\"deletedSubjectId\", pm.variables.get(\"createdSubjectId\"));",
+                  "    pm.collectionVariables.unset(\"createdSubjectId\");",
+                  "    pm.collectionVariables.unset(\"testSubjectName\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete temporary grade",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/catalog/grades/{{createdGradeId}}",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"adminToken\")) { pm.execution.skipRequest(); throw new Error(\"Missing adminToken; follow postman/README.md and run requests in order.\"); }",
+                  "if (!pm.variables.get(\"createdGradeId\")) { pm.execution.skipRequest(); throw new Error(\"Missing createdGradeId; follow postman/README.md and run requests in order.\"); }",
+                  "if (!pm.variables.get(\"testGradeName\")) { pm.execution.skipRequest(); throw new Error(\"Missing testGradeName; follow postman/README.md and run requests in order.\"); }",
+                  "if (!/^PMG-[0-9a-f-]{36}$/i.test(pm.variables.get(\"testGradeName\")) || !/^[1-9][0-9]*$/.test(String(pm.variables.get(\"createdGradeId\")))) {",
+                  "    pm.execution.skipRequest(); throw new Error(\"Invalid temporary record marker; refusing cleanup.\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"Success envelope\", () => {",
+                  "    pm.expect(body.status).to.eql(200);",
+                  "    pm.expect(body.code).to.eql(\"SUCCESS\");",
+                  "    pm.expect(body.success).to.eql(true);",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"Deleted successfully\", () => pm.expect(body.data).to.eql(null));",
+                  "if (pm.response.code === 200) {",
+                  "    pm.collectionVariables.set(\"deletedGradeId\", pm.variables.get(\"createdGradeId\"));",
+                  "    pm.collectionVariables.unset(\"createdGradeId\");",
+                  "    pm.collectionVariables.unset(\"testGradeName\");",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify temporary records removed",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/catalog/options",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"deletedSubjectId\")) { pm.execution.skipRequest(); throw new Error(\"Missing deletedSubjectId; follow postman/README.md and run requests in order.\"); }",
+                  "if (!pm.variables.get(\"deletedGradeId\")) { pm.execution.skipRequest(); throw new Error(\"Missing deletedGradeId; follow postman/README.md and run requests in order.\"); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"Server request ID\", () => pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.match(/^[0-9a-f-]{36}$/i));",
+                  "pm.test(\"Success envelope\", () => {",
+                  "    pm.expect(body.status).to.eql(200);",
+                  "    pm.expect(body.code).to.eql(\"SUCCESS\");",
+                  "    pm.expect(body.success).to.eql(true);",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});",
+                  "pm.test(\"Created subject and grade no longer exist\", () => {",
+                  "    pm.expect(body.data.subjects.some(row => row.id === Number(pm.variables.get(\"deletedSubjectId\")))).to.eql(false);",
+                  "    pm.expect(body.data.grades.some(row => row.id === Number(pm.variables.get(\"deletedGradeId\")))).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
