@@ -3,9 +3,10 @@ server:
 spring:
   application:
     name: media-service
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://localhost:27017/mm_media}
   data:
     mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/mm_media}
       auto-index-creation: true
 media:
   cloudinary:
