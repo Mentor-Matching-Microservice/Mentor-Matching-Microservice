@@ -1,4 +1,4 @@
-package com.mentormatching.mentor.service;
+package com.mentormatching.mentor.usecase;
 
 import java.math.BigDecimal;
 import java.util.Map;
