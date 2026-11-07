@@ -1,0 +1,65 @@
+package com.mentormatching.mentor.service;
+
+import com.mentormatching.mentor.dto.response.MentorDetailResponse;
+import com.mentormatching.mentor.entity.AccountStatus;
+import com.mentormatching.mentor.entity.MentorApprovalStatus;
+import com.mentormatching.mentor.exception.ApiException;
+import com.mentormatching.mentor.repository.MentorProfileRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Lấy hồ sơ công khai của mentor đã được duyệt và có tài khoản đang hoạt động.
+ */
+@Service
+@Transactional(readOnly = true)
+public class GetMentorDetailUseCase {
+
+    private final MentorProfileRepository repository;
+
+    public GetMentorDetailUseCase(MentorProfileRepository repository) {
+        this.repository = repository;
+    }
+
+    /**
+     * Tìm hồ sơ theo ID; hồ sơ chưa công khai được trả về như không tồn tại.
+     *
+     * @param mentorId ID hồ sơ mentor, phải dương
+     * @return các trường hồ sơ được phép hiển thị công khai
+     * @throws ApiException 400 nếu ID không hợp lệ, 404 nếu không có mentor công khai
+     */
+    public MentorDetailResponse execute(Long mentorId) {
+        if (mentorId == null || mentorId <= 0) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Mentor ID must be positive.");
+        }
+
+        var profile = repository.findByIdAndApprovalStatusAndAccountStatus(
+                        mentorId,
+                        MentorApprovalStatus.APPROVED,
+                        AccountStatus.ACTIVE
+                )
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "MENTOR_PROFILE_NOT_FOUND", "Mentor profile not found."));
+
+        return MentorDetailResponse.builder()
+                .id(profile.getId())
+                .userId(profile.getUserId())
+                .fullName(profile.getFullName())
+                .avatarUrl(profile.getAvatarUrl())
+                .gender(profile.getGender())
+                .hometownCityId(profile.getHometownCityId())
+                .currentDistrictId(profile.getCurrentDistrictId())
+                .headline(profile.getHeadline())
+                .introduction(profile.getIntroduction())
+                .teachingStyle(profile.getTeachingStyle())
+                .experienceYears(profile.getExperienceYears())
+                .currentPosition(profile.getCurrentPosition())
+                .workplace(profile.getWorkplace())
+                .education(profile.getEducation())
+                .major(profile.getMajor())
+                .meetingType(profile.getMeetingType())
+                .createdAt(profile.getCreatedAt())
+                .updatedAt(profile.getUpdatedAt())
+                .build();
+    }
+}
