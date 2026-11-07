@@ -4,6 +4,35 @@ server:
 spring:
   application:
     name: api-gateway-service
+  cloud:
+    gateway:
+      server:
+        webmvc:
+          routes:
+            - id: auth-service
+              uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/v1/auth/**
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - id: user-service
+              uri: ${USER_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/v1/users/**
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - id: mentor-service
+              uri: ${MENTOR_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/v1/mentors/**
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - id: catalog-service
+              uri: ${CATALOG_SERVICE_URL:http://localhost:8087}
+              predicates:
+                - Path=/api/v1/catalog/**,/api/v1/locations/**,/api/v1/admin/catalog/**
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
 
 management:
   endpoints:
@@ -13,3 +42,7 @@ management:
   endpoint:
     health:
       show-details: never
+
+gateway:
+  cors:
+    allowed-origins: ${GATEWAY_CORS_ALLOWED_ORIGINS:http://localhost:5173}
