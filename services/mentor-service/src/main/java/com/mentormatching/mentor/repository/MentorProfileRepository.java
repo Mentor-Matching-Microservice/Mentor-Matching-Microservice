@@ -5,6 +5,7 @@ import java.util.UUID;
 import java.util.List;
 
 import com.mentormatching.mentor.entity.AccountStatus;
+import com.mentormatching.mentor.entity.MentorApprovalStatus;
 import com.mentormatching.mentor.entity.MentorProfile;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,6 +17,9 @@ import org.springframework.data.repository.query.Param;
 public interface MentorProfileRepository extends JpaRepository<MentorProfile, Long>, JpaSpecificationExecutor<MentorProfile> {
 
     Optional<MentorProfile> findByUserId(UUID userId);
+
+    Optional<MentorProfile> findByIdAndApprovalStatusAndAccountStatus(
+            Long id, MentorApprovalStatus approvalStatus, AccountStatus accountStatus);
 
     /** Đọc hồ sơ theo ID tăng dần để đồng bộ tài khoản theo từng batch. */
     List<MentorProfile> findByIdGreaterThanOrderByIdAsc(Long afterId, Pageable pageable);
