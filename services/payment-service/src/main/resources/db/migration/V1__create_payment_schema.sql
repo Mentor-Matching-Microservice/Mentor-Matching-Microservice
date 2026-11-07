@@ -4,7 +4,7 @@ CREATE TABLE payments (
   payer_id UUID NOT NULL,
   mentor_id UUID NOT NULL,
   amount NUMERIC(12,2) NOT NULL CHECK (amount > 0),
-  currency CHAR(3) NOT NULL,
+  currency VARCHAR(3) NOT NULL,
   status VARCHAR(24) NOT NULL CONSTRAINT ck_payment_status CHECK (status IN ('PENDING','PAID','FAILED')),
   idempotency_key VARCHAR(128) NOT NULL,
   provider_reference_id VARCHAR(255) UNIQUE,
