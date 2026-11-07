@@ -21,8 +21,7 @@ public class MediaService {
         if(!SetHolder.PURPOSES.contains(purpose)||!SetHolder.RESOURCES.contains(resourceType)) throw bad("Unsupported media purpose or resource type");
         if(size<1||size>config.maxFileSizeBytes()) throw bad("File size exceeds the allowed limit");
         if(purpose.equals("AVATAR")&&!resourceType.equals("image")) throw bad("Avatar uploads must be images");
-        if(resourceType.equals("image")&&!mime.startsWith("image/")) throw bad("Image resource requires image MIME type");
-        if(resourceType.equals("video")&&!mime.startsWith("video/")) throw bad("Video resource requires video MIME type");
+        if(!supportedMime(resourceType,mime)) throw bad("File MIME type is not allowed for this resource type");
         cloud.assertConfigured();
         String access=purpose.equals("VERIFICATION")?"PRIVATE":"PUBLIC";
         String publicId=config.uploadFolder()+"/users/"+owner+"/"+purpose.toLowerCase(Locale.ROOT)+"/"+UUID.randomUUID().toString().replace("-","");
@@ -31,15 +30,26 @@ public class MediaService {
     }
     public MediaAsset confirm(String id,String owner,String assetId) {
         MediaAsset a=owned(id,owner);
-        if(a.getStatus().equals("READY")) { if(!a.getAssetId().equals(assetId)) throw bad("Confirmed asset id differs"); return a; }
-        if(!a.getStatus().equals("PENDING")||a.getExpiresAt().isBefore(Instant.now())) throw bad("Upload intent is expired or no longer confirmable");
+        if(a.getStatus().equals("READY")) { if(!java.util.Objects.equals(a.getAssetId(),assetId)) throw bad("Confirmed asset id differs"); return a; }
+        if(!a.getStatus().equals("PENDING")||a.getExpiresAt()==null||!a.getExpiresAt().isAfter(Instant.now())) throw bad("Upload intent is expired or no longer confirmable");
         Map<String,Object> m=cloud.verify(a,assetId);
-        a.ready((String)m.get("assetId"),(String)m.get("secureUrl"),((Number)m.get("size")).longValue(),number(m.get("width")),number(m.get("height")),longNumber(m.get("version")),(String)m.get("format"));
+        if(m==null||!(m.get("size") instanceof Number size)||!(m.get("assetId") instanceof String verifiedId)
+                ||!(m.get("secureUrl") instanceof String secureUrl)||!(m.get("format") instanceof String format)
+                ||!(m.get("etag") instanceof String etag)) throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,"Cloudinary returned incomplete asset metadata");
+        a.ready(verifiedId,secureUrl,size.longValue(),number(m.get("width")),number(m.get("height")),longNumber(m.get("version")),format,etag);
         return assets.save(a);
     }
     private MediaAsset owned(String id,String owner){return assets.findByIdAndOwnerId(id,owner).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Media asset not found"));}
     private static Integer number(Object n){return n instanceof Number v?v.intValue():null;}
     private static Long longNumber(Object n){return n instanceof Number v?v.longValue():null;}
+    private static boolean supportedMime(String resourceType,String mime){
+        return switch(resourceType){
+            case "image" -> java.util.Set.of("image/jpeg","image/png","image/webp","image/gif").contains(mime);
+            case "video" -> java.util.Set.of("video/mp4","video/webm").contains(mime);
+            case "raw" -> mime.equals("application/pdf");
+            default -> false;
+        };
+    }
     private static ResponseStatusException bad(String message){return new ResponseStatusException(HttpStatus.BAD_REQUEST,message);}
     private static final class SetHolder { static final java.util.Set<String> PURPOSES=java.util.Set.of("AVATAR","ACHIEVEMENT","REVIEW_ATTACHMENT","VERIFICATION"); static final java.util.Set<String> RESOURCES=java.util.Set.of("image","video","raw"); }
 }
