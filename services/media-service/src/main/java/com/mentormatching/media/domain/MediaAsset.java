@@ -3,6 +3,7 @@ package com.mentormatching.media.domain;
 import java.time.Instant;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document("media_assets")
@@ -29,6 +30,7 @@ public class MediaAsset {
     private Instant updatedAt;
     private Instant expiresAt;
     private Instant deletedAt;
+    @Indexed(expireAfter="30d") private Instant purgeAt;
     protected MediaAsset() {}
     public MediaAsset(String ownerId, String purpose, String resourceType, String accessType, String publicId,
                       String originalFilename, String mimeType, long expectedSize, Instant expiresAt) {
@@ -40,6 +42,7 @@ public class MediaAsset {
         this.assetId=assetId; this.secureUrl=secureUrl; this.size=size; this.width=width; this.height=height;
         this.version=version; this.format=format; this.status="READY"; this.updatedAt=Instant.now();
     }
+    public void delete(String status) { this.status=status; this.deletedAt=Instant.now(); this.purgeAt=this.deletedAt.plusSeconds(30L*24*60*60); this.updatedAt=this.deletedAt; }
     public String getId(){return id;} public String getOwnerId(){return ownerId;} public String getPurpose(){return purpose;}
     public String getResourceType(){return resourceType;} public String getAccessType(){return accessType;} public String getStatus(){return status;}
     public String getPublicId(){return publicId;} public String getAssetId(){return assetId;} public String getSecureUrl(){return secureUrl;}

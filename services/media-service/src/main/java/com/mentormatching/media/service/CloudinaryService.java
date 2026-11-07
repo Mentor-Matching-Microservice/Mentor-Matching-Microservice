@@ -1,5 +1,6 @@
 package com.mentormatching.media.service;
 
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
@@ -64,6 +65,33 @@ public class CloudinaryService {
         return metadata;
     }
 
+    public String privateUrl(MediaAsset asset) {
+        ensureConfigured();
+        long timestamp=Instant.now().getEpochSecond();
+        long expires=Instant.now().plus(config.privateUrlTtl()).getEpochSecond();
+        Map<String,String> params=new TreeMap<>();
+        params.put("expires_at",Long.toString(expires)); params.put("format",asset.getFormat());
+        params.put("public_id",asset.getPublicId()); params.put("timestamp",Long.toString(timestamp));
+        params.put("type","authenticated");
+        String signature=uploadSignature(join(params)+config.apiSecret());
+        String query="timestamp="+timestamp+"&public_id="+encode(asset.getPublicId())+"&format="+encode(asset.getFormat())+
+                "&expires_at="+expires+"&type=authenticated&signature="+signature+"&api_key="+encode(config.apiKey());
+        return "https://api.cloudinary.com/v1_1/"+config.cloudName()+"/"+asset.getResourceType()+"/download?"+query;
+    }
+
+    public void delete(MediaAsset asset) {
+        LinkedMultiValueMap<String,String> form=new LinkedMultiValueMap<>();
+        String resourceType=asset.getResourceType();
+        String delivery=asset.getAccessType().equals("PRIVATE")?"authenticated":"upload";
+        if(asset.getAssetId()!=null) {
+            form.add("asset_ids[]",asset.getAssetId());
+            call(HttpMethod.DELETE,"https://api.cloudinary.com/v1_1/"+config.cloudName()+"/resources",form);
+        } else {
+            form.add("public_ids[]",asset.getPublicId()); form.add("invalidate","true");
+            call(HttpMethod.DELETE,"https://api.cloudinary.com/v1_1/"+config.cloudName()+"/resources/"+resourceType+"/"+delivery,form);
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private Map<String,Object> call(HttpMethod method,String url,LinkedMultiValueMap<String,String> form) {
         try {
@@ -86,4 +114,5 @@ public class CloudinaryService {
     private static String uploadSignature(String payload){
         StringBuilder out=new StringBuilder(); for(byte b:digest(payload)) out.append(String.format("%02x",b)); return out.toString();
     }
+    private static String encode(String value){return URLEncoder.encode(value,StandardCharsets.UTF_8);}
 }

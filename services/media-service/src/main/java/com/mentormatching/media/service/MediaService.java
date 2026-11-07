@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
@@ -37,7 +38,23 @@ public class MediaService {
         a.ready((String)m.get("assetId"),(String)m.get("secureUrl"),((Number)m.get("size")).longValue(),number(m.get("width")),number(m.get("height")),longNumber(m.get("version")),(String)m.get("format"));
         return assets.save(a);
     }
+    public String signedUrl(String id,String owner) {
+        MediaAsset a=owned(id,owner); if(!a.getStatus().equals("READY")) throw bad("Media asset is not ready");
+        if(!a.getAccessType().equals("PRIVATE")) return a.getSecureUrl();
+        return cloud.privateUrl(a);
+    }
+    public String internalSignedUrl(String id) {
+        MediaAsset a=assets.findById(id).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Media asset not found"));
+        if(!a.getStatus().equals("READY")) throw bad("Media asset is not ready");
+        return a.getAccessType().equals("PRIVATE")?cloud.privateUrl(a):a.getSecureUrl();
+    }
+    public void delete(String id,String owner) {
+        MediaAsset a=owned(id,owner); if(a.getStatus().equals("DELETED")) return;
+        cloud.delete(a); a.delete("DELETED"); assets.save(a);
+    }
     private MediaAsset owned(String id,String owner){return assets.findByIdAndOwnerId(id,owner).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Media asset not found"));}
+    @Scheduled(fixedDelayString="${media.cloudinary.cleanup-delay-ms:3600000}")
+    public void cleanupExpiredIntents(){ for(MediaAsset a:assets.findTop100ByStatusAndExpiresAtBefore("PENDING",Instant.now())) { try { cloud.delete(a); a.delete("EXPIRED"); assets.save(a); } catch(RuntimeException ignored) { /* retry on next cleanup interval */ } } }
     private static Integer number(Object n){return n instanceof Number v?v.intValue():null;}
     private static Long longNumber(Object n){return n instanceof Number v?v.longValue():null;}
     private static ResponseStatusException bad(String message){return new ResponseStatusException(HttpStatus.BAD_REQUEST,message);}
