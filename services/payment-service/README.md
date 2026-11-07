@@ -1,6 +1,6 @@
 # payment-service
 
-Payment checkout branch implements Stripe Checkout, payment lookup and checkout idempotency.
+Payment service implements Stripe Checkout, payment lookup, verified webhook state changes, admin refunds, idempotency and scheduled reconciliation.
 
 - Java 21; Spring Boot 4.1.2; Spring Cloud 2025.1.4; Maven Wrapper riêng.
 - Package `com.mentormatching.payment`; port mặc định `8085`.
@@ -32,6 +32,9 @@ Flyway bật nhưng thư mục migration chưa có SQL; JPA chỉ validate, khô
 
 - `POST /api/v1/payments` requires `Idempotency-Key` and `{ "bookingId": "UUID" }`. The service reads amount, currency, learner and mentor from Booking Service; callers cannot submit a price.
 - `GET /api/v1/payments/me` and `GET /api/v1/payments/{id}` return the caller's payment record.
-Booking Service must expose `GET /api/v1/bookings/{id}/payment-summary` returning bookingId, learnerId, mentorId, status, totalAmount and currency. Checkout is only allowed for a `PENDING` booking owned by the current learner. The client cannot submit the amount; it is read from the booking snapshot. Requests require an `Idempotency-Key`.
+- `POST /api/v1/payments/stripe/webhook` verifies `Stripe-Signature`; Stripe CLI can forward local events to this endpoint.
+- `POST /api/v1/payments/{id}/refund` is admin-only and requires an idempotency key. An omitted amount requests the remaining balance.
 
-Configure `STRIPE_SECRET_KEY`, `AUTH_JWT_*`, and `BOOKING_SERVICE_URL`; sample values are in `.env.example`. Do not commit live Stripe secrets.
+Booking Service must expose `GET /api/v1/bookings/{id}/payment-summary` returning bookingId, learnerId, mentorId, status, totalAmount and currency. Checkout is only allowed for a `PENDING` booking owned by the current learner. Stripe webhook event IDs and refund keys are persisted to prevent duplicate effects. A scheduled job reconciles expired checkout sessions with Stripe.
+
+Configure `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `AUTH_JWT_*`, and `BOOKING_SERVICE_URL`; sample values are in `.env.example`. Do not commit live Stripe secrets.
