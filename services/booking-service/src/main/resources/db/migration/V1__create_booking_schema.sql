@@ -13,7 +13,7 @@ CREATE TABLE bookings (
     grade_name_snapshot NVARCHAR(255) NULL,
     price_per_hour_snapshot DECIMAL(12,2) NOT NULL,
     total_amount DECIMAL(12,2) NOT NULL,
-    currency CHAR(3) NOT NULL,
+    currency VARCHAR(3) NOT NULL,
     learner_note NVARCHAR(2000) NULL,
     mentor_response NVARCHAR(2000) NULL,
     idempotency_key VARCHAR(120) NOT NULL,
