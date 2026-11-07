@@ -1,0 +1,42 @@
+server:
+  port: ${SERVER_PORT:8088}
+spring:
+  application:
+    name: media-service
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://localhost:27017/mm_media}
+  data:
+    mongodb:
+      auto-index-creation: true
+media:
+  cloudinary:
+    cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+    api-key: ${CLOUDINARY_API_KEY:}
+    api-secret: ${CLOUDINARY_API_SECRET:}
+    upload-folder: ${CLOUDINARY_UPLOAD_FOLDER:mentor-matching}
+    max-file-size-bytes: ${MEDIA_MAX_FILE_SIZE_BYTES:10485760}
+    upload-intent-ttl: ${MEDIA_UPLOAD_INTENT_TTL:PT30M}
+    private-url-ttl: ${MEDIA_PRIVATE_URL_TTL:PT10M}
+    cleanup-delay-ms: ${MEDIA_CLEANUP_DELAY_MS:3600000}
+  jwt:
+    issuer: ${AUTH_JWT_ISSUER:auth-service}
+    audience: ${AUTH_JWT_AUDIENCE:mentor-matching-api}
+    public-key-location: ${AUTH_JWT_PUBLIC_KEY_LOCATION:file:../auth-service/jwt-keys/public.pem}
+eureka:
+  client:
+    enabled: ${EUREKA_ENABLED:false}
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED:false}
