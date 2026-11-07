@@ -20,6 +20,7 @@ public class Payment {
     @Column(name="checkout_url",length=2048) private String checkoutUrl;
     @Column(name="expires_at") private Instant expiresAt;
     @Column(name="checkout_attempt",nullable=false) private int checkoutAttempt=0;
+    @Column(name="refunded_amount",nullable=false,precision=12,scale=2) private BigDecimal refundedAmount=BigDecimal.ZERO;
     @Column(name="failure_reason",length=1000) private String failureReason;
     @Column(name="created_at",nullable=false) private Instant createdAt=Instant.now();
     @Column(name="updated_at",nullable=false) private Instant updatedAt=Instant.now();
@@ -30,6 +31,7 @@ public class Payment {
     public void checkout(String sessionId,String url,Instant expires){checkoutAttempt++;providerReferenceId=sessionId;checkoutUrl=url;expiresAt=expires;updatedAt=Instant.now();}
     public void paid(String intentId){status=PaymentStatus.PAID;providerTransactionId=intentId;failureReason=null;updatedAt=Instant.now();}
     public void failed(String reason){if(status==PaymentStatus.PAID)return;status=PaymentStatus.FAILED;failureReason=reason;updatedAt=Instant.now();}
+    public BigDecimal getRefundedAmount(){return refundedAmount;}
     public UUID getId(){return id;} public UUID getBookingId(){return bookingId;} public UUID getPayerId(){return payerId;} public UUID getMentorId(){return mentorId;}
     public BigDecimal getAmount(){return amount;} public String getCurrency(){return currency;} public PaymentStatus getStatus(){return status;}
     public String getIdempotencyKey(){return idempotencyKey;} public String getProviderReferenceId(){return providerReferenceId;} public String getProviderTransactionId(){return providerTransactionId;}
