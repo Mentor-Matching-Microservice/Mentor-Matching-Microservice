@@ -5,6 +5,8 @@ Nền tảng Booking Service độc lập, dùng SQL Server và Flyway. Đây l�
 - Java 21; Spring Boot 4.1.2; Spring Cloud 2025.1.4; Maven Wrapper riêng.
 - Package `com.mentormatching.booking`; port mặc định `8084`.
 - DBMS **Microsoft SQL Server**, database riêng `mm_booking` và user runtime riêng.
+- Flyway tạo bảng `bookings` và `mentor_availabilities`; booking `PENDING` có thời hạn giữ chỗ để Payment xác minh trước khi tạo Checkout.
+- Internal endpoint `GET /internal/v1/bookings/{bookingId}/payment-context` chỉ trả dữ liệu thanh toán cho đúng learner, và chỉ khi booking còn `PENDING` trong thời hạn giữ chỗ.
 - JDBC driver và Flyway database module theo SQL Server.
 - Dependency chung và phiên bản: [service initialization](../../docs/service-initialization.md).
 
@@ -16,7 +18,7 @@ Từ thư mục service:
 ./mvnw clean verify
 ```
 
-Build kiểm tra dependency resolution, compile và executable JAR; hiện chưa có test case. Chưa cần database/Docker cho build này. Integration tests sau phải dùng PostgreSQL thực, không thay bằng H2.
+`clean verify` chạy integration test trên SQL Server bằng Testcontainers; Docker cần chạy. H2 không được dùng thay SQL Server vì migration và kiểu dữ liệu phụ thuộc MSSQL.
 
 ## Chạy sau khi chuẩn bị database
 
@@ -26,7 +28,7 @@ Tạo database/user riêng; đặt `DB_PASSWORD` qua shell hoặc IDE. `DB_URL`,
 ./mvnw spring-boot:run
 ```
 
-Flyway bật, JPA chỉ validate. Startup cần SQL Server và credentials hợp lệ. Eureka mặc định tắt; Swagger mặc định tắt. Actuator expose health/info. JWT issuer/audience/public key cấu hình bằng `AUTH_JWT_*`.
+Flyway bật, JPA chỉ validate. Startup cần SQL Server và credentials hợp lệ. Eureka client bật mặc định và đăng ký tới `EUREKA_URL`; tắt bằng `EUREKA_ENABLED=false` khi chạy độc lập. Swagger mặc định tắt. Actuator expose health/info. JWT issuer/audience/public key cấu hình bằng `AUTH_JWT_*`.
 
 ## Scheduling
 
