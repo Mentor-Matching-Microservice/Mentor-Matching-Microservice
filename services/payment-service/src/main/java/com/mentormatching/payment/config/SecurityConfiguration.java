@@ -19,7 +19,7 @@ public class SecurityConfiguration {
         JwtAuthenticationConverter converter=new JwtAuthenticationConverter();converter.setJwtGrantedAuthoritiesConverter(roles);
         return http.csrf(AbstractHttpConfigurer::disable).sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(a->a.requestMatchers(HttpMethod.POST,"/api/v1/payments/stripe/webhook").permitAll()
-                        .requestMatchers("/actuator/health","/actuator/health/**").permitAll().anyRequest().authenticated())
+                        .requestMatchers("/actuator/health","/actuator/health/**","/error").permitAll().anyRequest().authenticated())
                 .oauth2ResourceServer(o->o.jwt(j->j.jwtAuthenticationConverter(converter))).build();
     }
 }
