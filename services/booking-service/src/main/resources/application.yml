@@ -18,8 +18,7 @@ spring:
 
 eureka:
   client:
-    # Enable once discovery-service exists.
-    enabled: ${EUREKA_ENABLED:false}
+    enabled: ${EUREKA_ENABLED:true}
     service-url:
       defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
 
