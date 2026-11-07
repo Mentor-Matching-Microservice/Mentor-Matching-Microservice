@@ -12,8 +12,9 @@ public class Booking {
     @Column(name="total_amount",nullable=false,precision=12,scale=2) private BigDecimal totalAmount;
     @Column(nullable=false,length=3) private String currency;
     @Column(name="start_at",nullable=false) private OffsetDateTime startAt;
+    @Column(name="payment_hold_expires_at",nullable=false) private OffsetDateTime paymentHoldExpiresAt;
     protected Booking(){}
     public UUID getId(){return id;} public UUID getLearnerId(){return learnerId;} public UUID getMentorId(){return mentorId;}
     public BookingStatus getStatus(){return status;} public BigDecimal getTotalAmount(){return totalAmount;} public String getCurrency(){return currency;}
-    public OffsetDateTime getStartAt(){return startAt;}
+    public OffsetDateTime getStartAt(){return startAt;} public OffsetDateTime getPaymentHoldExpiresAt(){return paymentHoldExpiresAt;}
 }

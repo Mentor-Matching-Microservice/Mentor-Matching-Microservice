@@ -5,8 +5,8 @@ spring:
   application:
     name: payment-service
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/mm_payment}
-    username: ${DB_USERNAME:mm_payment}
+    url: ${DB_URL:jdbc:sqlserver://localhost:1433;databaseName=mm_payment;encrypt=true;trustServerCertificate=true}
+    username: ${DB_USERNAME:sa}
     password: ${DB_PASSWORD}
   flyway:
     enabled: true
@@ -15,6 +15,24 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: validate
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          initial-interval: 1s
+          max-attempts: 5
+          max-interval: 30s
+          multiplier: 2
 
 eureka:
   client:
@@ -50,3 +68,8 @@ payment:
     success-url: ${STRIPE_SUCCESS_URL:http://localhost:5173/payments/success?session_id={CHECKOUT_SESSION_ID}}
     cancel-url: ${STRIPE_CANCEL_URL:http://localhost:5173/payments/cancel}
     reconcile-after: ${PAYMENT_RECONCILE_AFTER:PT30M}
+  messaging:
+    enabled: ${PAYMENT_MESSAGING_ENABLED:true}
+    exchange: ${PAYMENT_EVENTS_EXCHANGE:mentor.events}
+    booking-events-queue: ${PAYMENT_BOOKING_EVENTS_QUEUE:payment.booking-lifecycle}
+
