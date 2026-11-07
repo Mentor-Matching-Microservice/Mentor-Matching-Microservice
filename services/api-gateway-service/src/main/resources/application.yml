@@ -33,6 +33,30 @@ spring:
                 - Path=/api/v1/catalog/**,/api/v1/locations/**,/api/v1/admin/catalog/**
               filters:
                 - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - id: booking-service
+              uri: ${BOOKING_SERVICE_URL:http://localhost:8084}
+              predicates:
+                - Path=/api/v1/bookings/**,/api/v1/scheduling/**
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - id: payment-service
+              uri: ${PAYMENT_SERVICE_URL:http://localhost:8085}
+              predicates:
+                - Path=/api/v1/payments/**
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - id: review-service
+              uri: ${REVIEW_SERVICE_URL:http://localhost:8086}
+              predicates:
+                - Path=/api/v1/reviews/**
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - id: media-service
+              uri: ${MEDIA_SERVICE_URL:http://localhost:8088}
+              predicates:
+                - Path=/api/v1/media/**
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
 
 management:
   endpoints:
