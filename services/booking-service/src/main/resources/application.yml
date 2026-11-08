@@ -5,9 +5,9 @@ spring:
   application:
     name: booking-service
   datasource:
-    url: ${DB_URL:jdbc:sqlserver://localhost:1433;databaseName=mm_booking;encrypt=false;trustServerCertificate=true}
+    url: ${DB_URL:jdbc:sqlserver://localhost:1433;databaseName=mm_booking;encrypt=true;trustServerCertificate=true}
     username: ${DB_USERNAME:sa}
-    password: ${DB_PASSWORD:MentorMatching123!}
+    password: ${DB_PASSWORD}
   jpa:
     open-in-view: false
     hibernate:
@@ -39,6 +39,11 @@ springdoc:
     enabled: ${API_DOCS_ENABLED:false}
 
 booking:
+  messaging:
+    enabled: ${BOOKING_MESSAGING_ENABLED:true}
+    exchange: ${BOOKING_MESSAGING_EXCHANGE:mentor.events}
+    payment-events-queue: ${BOOKING_PAYMENT_EVENTS_QUEUE:booking.payment-events}
+    booking-lifecycle-routing-key: ${BOOKING_LIFECYCLE_ROUTING_KEY:booking.lifecycle}
   jwt:
     issuer: ${AUTH_JWT_ISSUER:auth-service}
     audience: ${AUTH_JWT_AUDIENCE}

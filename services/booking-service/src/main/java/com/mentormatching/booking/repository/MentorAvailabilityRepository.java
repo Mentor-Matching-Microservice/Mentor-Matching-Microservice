@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 @Repository
@@ -41,5 +42,38 @@ public interface MentorAvailabilityRepository extends JpaRepository<MentorAvaila
             @Param("mentorId") Long mentorId,
             @Param("from") LocalDate from,
             @Param("to") LocalDate to);
-}
 
+    @Query("""
+            SELECT COUNT(a) > 0
+            FROM MentorAvailability a
+            WHERE a.mentorId = :mentorId
+              AND a.availabilityType = com.mentormatching.booking.entity.AvailabilityType.RECURRING
+              AND a.dayOfWeek = :dayOfWeek
+              AND (:excludeId IS NULL OR a.id <> :excludeId)
+              AND a.startTime < :endTime
+              AND a.endTime > :startTime
+            """)
+    boolean existsOverlappingRecurring(
+            @Param("mentorId") Long mentorId,
+            @Param("dayOfWeek") Integer dayOfWeek,
+            @Param("startTime") LocalTime startTime,
+            @Param("endTime") LocalTime endTime,
+            @Param("excludeId") Long excludeId);
+
+    @Query("""
+            SELECT COUNT(a) > 0
+            FROM MentorAvailability a
+            WHERE a.mentorId = :mentorId
+              AND a.availabilityType = com.mentormatching.booking.entity.AvailabilityType.SPECIFIC_DATE
+              AND a.availableDate = :availableDate
+              AND (:excludeId IS NULL OR a.id <> :excludeId)
+              AND a.startTime < :endTime
+              AND a.endTime > :startTime
+            """)
+    boolean existsOverlappingSpecificDate(
+            @Param("mentorId") Long mentorId,
+            @Param("availableDate") LocalDate availableDate,
+            @Param("startTime") LocalTime startTime,
+            @Param("endTime") LocalTime endTime,
+            @Param("excludeId") Long excludeId);
+}

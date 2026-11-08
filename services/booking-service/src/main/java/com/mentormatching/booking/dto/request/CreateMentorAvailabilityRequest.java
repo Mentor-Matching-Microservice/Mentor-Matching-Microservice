@@ -18,8 +18,6 @@ import java.time.LocalTime;
 @AllArgsConstructor
 public class CreateMentorAvailabilityRequest {
 
-    private Long mentorId;
-
     @NotNull
     private AvailabilityType availabilityType;
 

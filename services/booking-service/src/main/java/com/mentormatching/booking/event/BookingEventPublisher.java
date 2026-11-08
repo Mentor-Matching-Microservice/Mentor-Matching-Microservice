@@ -36,4 +36,16 @@ public class BookingEventPublisher {
                 event.bookingId(), event.cancelledBy(), event.cancelReason());
         applicationEventPublisher.publishEvent(event);
     }
+
+    public void publishBookingConfirmed(BookingConfirmedEvent event) {
+        log.info("Publishing BookingConfirmedEvent: bookingId={}, student={}, mentor={}, amount={}",
+                event.bookingId(), event.studentUserId(), event.mentorId(), event.totalAmount());
+        applicationEventPublisher.publishEvent(event);
+    }
+
+    public void publishBookingConfirmationFailed(BookingConfirmationFailedEvent event) {
+        log.info("Publishing BookingConfirmationFailedEvent: bookingId={}, reason={}",
+                event.bookingId(), event.reason());
+        applicationEventPublisher.publishEvent(event);
+    }
 }

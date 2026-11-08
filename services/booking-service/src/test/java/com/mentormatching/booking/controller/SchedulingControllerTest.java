@@ -93,7 +93,6 @@ class SchedulingControllerTest {
 
         String json = """
                 {
-                    "mentorId": 10,
                     "availabilityType": "RECURRING",
                     "dayOfWeek": 2,
                     "startTime": "14:00:00",
