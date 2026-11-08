@@ -48,8 +48,6 @@ public class GetAdminMentorVerificationDetailUseCase {
                 .mentorId(verification.getMentorId())
                 .userId(profile.getUserId())
                 .accountFullName(profile.getFullName())
-                .approvalStatus(profile.getApprovalStatus())
-                .approvalNote(profile.getApprovalNote())
                 .fullName(verification.getFullName())
                 .idCardNumber(verification.getIdCardNumber())
                 .idCardFrontUrl(verification.getIdCardFrontUrl())

@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Admin duyệt hoặc từ chối giấy tờ xác minh mentor đang chờ.
+ * Admin duyệt hoặc từ chối KYC của ứng viên mentor.
  */
 @Service
 @PreAuthorize("hasRole('ADMIN')")
@@ -59,12 +59,12 @@ public class ReviewMentorVerificationUseCase {
             throw new ApiException(HttpStatus.CONFLICT, "VERIFICATION_NOT_PENDING",
                     "Only pending mentor verification can be reviewed.");
         }
-
         // VERIFY
         if (command.action() == ReviewMentorVerificationAction.VERIFY) {
+            var reviewedAt = Instant.now();
             verification.setVerificationStatus(MentorVerificationStatus.VERIFIED);
             verification.setVerifiedBy(reviewerId);
-            verification.setVerifiedAt(Instant.now());
+            verification.setVerifiedAt(reviewedAt);
             verification.setRejectionReason(null);
         } else {
             // REJECTED

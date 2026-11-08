@@ -16,7 +16,7 @@ public final class MentorSearchSpecifications {
     }
 
     /**
-     * Kết hợp các bộ lọc bằng AND và luôn giới hạn APPROVED + ACTIVE.
+     * Kết hợp các bộ lọc bằng AND và chỉ lấy mentor đủ điều kiện hiển thị công khai.
      * Tìm chuỗi con trên tên/headline, escape %, _ và ký tự escape !.
      * Mỗi trait được chọn đều phải tồn tại; môn và giá phải khớp cùng một bản ghi active.
      *
@@ -24,15 +24,39 @@ public final class MentorSearchSpecifications {
      * @return Specification dùng cho cả truy vấn dữ liệu và đếm bản ghi
      */
     public static Specification<MentorProfile> matching(SearchMentorsQuery input) {
+        return visible().and(filters(input));
+    }
 
+    /** Điều kiện công khai dùng chung cho danh sách và trang chi tiết. */
+    public static Specification<MentorProfile> visible() {
         return (root, query, cb) -> {
-            // Danh sách chứa các điều kiện
-            var predicates = new ArrayList<Predicate>();
+            var verification = query.subquery(Long.class);
+            var v = verification.from(MentorVerification.class);
+            verification.select(v.get("id")).where(
+                    cb.equal(v.get("mentorId"), root.get("id")),
+                    cb.equal(v.get("verificationStatus"), MentorVerificationStatus.VERIFIED));
 
-            // 1. ĐIỀU KIỆN MẶC ĐỊNH
-            // Chỉ hiển thị những gia sư đã được phê duyệt và tài khoản đang hoạt động
-            predicates.add(cb.equal(root.get("approvalStatus"), MentorApprovalStatus.APPROVED));
-            predicates.add(cb.equal(root.get("accountStatus"), AccountStatus.ACTIVE));
+            var activeSubject = query.subquery(Long.class);
+            var s = activeSubject.from(MentorSubject.class);
+            activeSubject.select(s.get("id")).where(
+                    cb.equal(s.get("mentorId"), root.get("id")),
+                    cb.isTrue(s.get("active")));
+
+            return cb.and(
+                    cb.equal(root.get("accountStatus"), AccountStatus.ACTIVE),
+                    cb.notEqual(cb.trim(root.get("fullName")), ""),
+                    cb.notEqual(cb.trim(root.get("avatarUrl")), ""),
+                    cb.notEqual(cb.trim(root.get("headline")), ""),
+                    cb.notEqual(cb.trim(root.get("introduction")), ""),
+                    cb.isNotNull(root.get("meetingType")),
+                    cb.exists(verification),
+                    cb.exists(activeSubject));
+        };
+    }
+
+    private static Specification<MentorProfile> filters(SearchMentorsQuery input) {
+        return (root, query, cb) -> {
+            var predicates = new ArrayList<Predicate>();
 
             // Search condition
             if (input.search() != null && !input.search().isBlank()) {

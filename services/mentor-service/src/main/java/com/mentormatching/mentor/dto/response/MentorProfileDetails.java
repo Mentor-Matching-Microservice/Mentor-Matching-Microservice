@@ -4,7 +4,6 @@ import java.time.Instant;
 import java.util.UUID;
 
 import com.mentormatching.mentor.entity.MeetingType;
-import com.mentormatching.mentor.entity.MentorApprovalStatus;
 import com.mentormatching.mentor.entity.MentorGender;
 import lombok.Builder;
 import com.mentormatching.mentor.entity.AccountStatus;
@@ -30,9 +29,6 @@ public record MentorProfileDetails(
         String education,
         String major,
         MeetingType meetingType,
-        MentorApprovalStatus approvalStatus,
-        String approvalNote,
-        Instant approvedAt,
         Instant createdAt,
         Instant updatedAt) {
 }

@@ -4,7 +4,6 @@ import java.util.UUID;
 
 import com.mentormatching.mentor.dto.command.UpsertCurrentMentorVerificationCommand;
 import com.mentormatching.mentor.dto.response.CurrentMentorVerificationResponse;
-import com.mentormatching.mentor.entity.MentorApprovalStatus;
 import com.mentormatching.mentor.entity.MentorProfile;
 import com.mentormatching.mentor.entity.MentorVerification;
 import com.mentormatching.mentor.entity.MentorVerificationStatus;
@@ -36,7 +35,7 @@ public class UpsertCurrentMentorVerificationUseCase {
     }
 
     /**
-     * Tạo profile nếu chưa có; đặt trạng thái PENDING khi nộp hoặc nộp lại verification bị từ chối.
+     * Tạo profile nếu chưa có; đặt verification PENDING khi nộp hoặc nộp lại sau khi bị từ chối.
      * Profile và verification được ghi trong cùng transaction.
      *
      * @param userId  UUID từ JWT sub, không lấy từ request body
@@ -50,13 +49,11 @@ public class UpsertCurrentMentorVerificationUseCase {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Invalid mentor verification.");
         }
 
-        // CREATE DRAFT PROFILE
         var profile = mentorProfileRepository.findByUserId(userId).orElseGet(() -> {
-            var draft = new MentorProfile();
-            draft.setUserId(userId);
-            draft.setAvatarUrl("");
-            draft.setApprovalStatus(MentorApprovalStatus.DRAFT);
-            return mentorProfileRepository.saveAndFlush(draft);
+            var created = new MentorProfile();
+            created.setUserId(userId);
+            created.setAvatarUrl("");
+            return mentorProfileRepository.saveAndFlush(created);
         });
 
         var existing = mentorVerificationRepository.findByMentorId(profile.getId());
@@ -81,12 +78,6 @@ public class UpsertCurrentMentorVerificationUseCase {
         verification.setVerifiedBy(null);
         verification.setVerifiedAt(null);
         verification.setRejectionReason(null);
-        profile.setApprovalStatus(MentorApprovalStatus.PENDING);
-        profile.setApprovedBy(null);
-        profile.setApprovedAt(null);
-        profile.setApprovalNote(null);
-
-        mentorProfileRepository.save(profile);
         var saved = mentorVerificationRepository.saveAndFlush(verification);
 
         return CurrentMentorVerificationResponse.builder()

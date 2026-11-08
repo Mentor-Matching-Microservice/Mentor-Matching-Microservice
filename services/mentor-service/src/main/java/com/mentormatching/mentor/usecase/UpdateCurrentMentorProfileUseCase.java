@@ -31,7 +31,7 @@ public class UpdateCurrentMentorProfileUseCase {
      * Caller phải lấy userId từ JWT sub; không nhận ID chủ hồ sơ từ body.
      * Hồ sơ phải được tạo ở bước xác minh trước khi tài khoản được cấp role MENTOR.
      * Lệnh cập nhật thay thế toàn bộ trường trong command, kể cả khi trường nhận null.
-     * Không thay đổi avatar, tên đồng bộ, trạng thái tài khoản hoặc trạng thái duyệt.
+     * Không thay đổi avatar, tên đồng bộ hoặc trạng thái tài khoản.
      *
      * @param userId  UUID tài khoản mentor đã xác thực
      * @param command các trường hồ sơ mentor được phép sửa
@@ -81,9 +81,6 @@ public class UpdateCurrentMentorProfileUseCase {
                 .education(saved.getEducation())
                 .major(saved.getMajor())
                 .meetingType(saved.getMeetingType())
-                .approvalStatus(saved.getApprovalStatus())
-                .approvalNote(saved.getApprovalNote())
-                .approvedAt(saved.getApprovedAt())
                 .createdAt(saved.getCreatedAt())
                 .updatedAt(saved.getUpdatedAt())
                 .build();

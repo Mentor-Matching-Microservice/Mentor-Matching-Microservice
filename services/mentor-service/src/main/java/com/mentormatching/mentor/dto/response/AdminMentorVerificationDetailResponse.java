@@ -3,7 +3,6 @@ package com.mentormatching.mentor.dto.response;
 import java.time.Instant;
 import java.util.UUID;
 
-import com.mentormatching.mentor.entity.MentorApprovalStatus;
 import com.mentormatching.mentor.entity.MentorVerificationStatus;
 import lombok.Builder;
 
@@ -14,8 +13,6 @@ public record AdminMentorVerificationDetailResponse(
         Long mentorId,
         UUID userId,
         String accountFullName,
-        MentorApprovalStatus approvalStatus,
-        String approvalNote,
         String fullName,
         String idCardNumber,
         String idCardFrontUrl,

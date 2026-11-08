@@ -51,9 +51,6 @@ public class GetCurrentMentorProfileUseCase {
                 .education(profile.getEducation())
                 .major(profile.getMajor())
                 .meetingType(profile.getMeetingType())
-                .approvalStatus(profile.getApprovalStatus())
-                .approvalNote(profile.getApprovalNote())
-                .approvedAt(profile.getApprovedAt())
                 .createdAt(profile.getCreatedAt())
                 .updatedAt(profile.getUpdatedAt())
                 .build();

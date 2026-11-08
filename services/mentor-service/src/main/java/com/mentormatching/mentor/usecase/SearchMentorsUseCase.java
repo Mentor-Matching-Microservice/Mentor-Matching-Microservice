@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Tìm mentor đã APPROVED và có bản sao account status ACTIVE.
+ * Tìm mentor đã xác minh KYC, tài khoản ACTIVE và hồ sơ đủ thông tin công khai.
  * Lọc và phân trang tại DB mentor; lấy giá tối thiểu theo batch, không gọi service khác.
  * Transaction read-only có hiệu lực khi được gọi qua Spring proxy.
  */
