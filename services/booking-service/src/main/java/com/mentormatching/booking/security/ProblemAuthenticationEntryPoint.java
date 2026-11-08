@@ -27,3 +27,4 @@ public class ProblemAuthenticationEntryPoint implements AuthenticationEntryPoint
         problems.write(HttpStatus.UNAUTHORIZED, request, response);
     }
 }
+

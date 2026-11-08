@@ -83,6 +83,9 @@ public class Booking {
     @Column(name = "cancel_reason", columnDefinition = "NVARCHAR(MAX)")
     private String cancelReason;
 
+    @Column(name = "hold_expires_at")
+    private LocalDateTime holdExpiresAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -107,3 +110,4 @@ public class Booking {
         updatedAt = LocalDateTime.now();
     }
 }
+

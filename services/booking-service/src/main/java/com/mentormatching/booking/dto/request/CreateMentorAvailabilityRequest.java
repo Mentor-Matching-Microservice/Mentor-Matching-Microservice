@@ -35,3 +35,4 @@ public class CreateMentorAvailabilityRequest {
     @NotNull
     private LocalTime endTime;
 }
+

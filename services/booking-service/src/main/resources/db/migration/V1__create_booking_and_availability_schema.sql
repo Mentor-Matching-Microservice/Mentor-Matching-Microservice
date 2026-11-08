@@ -61,3 +61,4 @@ CREATE TABLE bookings (
 CREATE INDEX idx_bookings_student_user_id_created_at ON bookings (student_user_id, created_at);
 CREATE INDEX idx_bookings_mentor_id_booking_date ON bookings (mentor_id, booking_date);
 CREATE INDEX idx_bookings_status ON bookings (status);
+

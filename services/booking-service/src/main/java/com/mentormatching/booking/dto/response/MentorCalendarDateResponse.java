@@ -11,3 +11,4 @@ public record MentorCalendarDateResponse(
         List<MentorCalendarWindowResponse> windows
 ) {
 }
+

@@ -30,3 +30,4 @@ public class ProblemErrorController implements ErrorController {
                 .body(problems.standard(code, request));
     }
 }
+

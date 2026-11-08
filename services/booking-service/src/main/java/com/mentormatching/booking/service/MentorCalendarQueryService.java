@@ -196,3 +196,4 @@ public class MentorCalendarQueryService {
     public record TimeWindow(LocalTime startTime, LocalTime endTime) {
     }
 }
+
