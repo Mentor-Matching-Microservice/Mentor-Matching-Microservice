@@ -36,7 +36,7 @@ public class UpsertCurrentMentorVerificationUseCase {
     }
 
     /**
-     * Tạo profile DRAFT nếu chưa có; chỉ cho nộp lại verification bị từ chối.
+     * Tạo profile nếu chưa có; đặt trạng thái PENDING khi nộp hoặc nộp lại verification bị từ chối.
      * Profile và verification được ghi trong cùng transaction.
      *
      * @param userId  UUID từ JWT sub, không lấy từ request body
@@ -81,7 +81,12 @@ public class UpsertCurrentMentorVerificationUseCase {
         verification.setVerifiedBy(null);
         verification.setVerifiedAt(null);
         verification.setRejectionReason(null);
+        profile.setApprovalStatus(MentorApprovalStatus.PENDING);
+        profile.setApprovedBy(null);
+        profile.setApprovedAt(null);
+        profile.setApprovalNote(null);
 
+        mentorProfileRepository.save(profile);
         var saved = mentorVerificationRepository.saveAndFlush(verification);
 
         return CurrentMentorVerificationResponse.builder()

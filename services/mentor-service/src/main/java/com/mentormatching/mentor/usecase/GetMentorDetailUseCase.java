@@ -1,16 +1,15 @@
 package com.mentormatching.mentor.usecase;
 
 import com.mentormatching.mentor.dto.response.MentorDetailResponse;
-import com.mentormatching.mentor.entity.AccountStatus;
-import com.mentormatching.mentor.entity.MentorApprovalStatus;
 import com.mentormatching.mentor.exception.ApiException;
 import com.mentormatching.mentor.repository.MentorProfileRepository;
+import com.mentormatching.mentor.repository.MentorSearchSpecifications;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Lấy hồ sơ công khai của mentor đã được duyệt và có tài khoản đang hoạt động.
+ * Lấy hồ sơ mentor đủ điều kiện hiển thị công khai.
  */
 @Service
 @Transactional(readOnly = true)
@@ -34,11 +33,8 @@ public class GetMentorDetailUseCase {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Mentor ID must be positive.");
         }
 
-        var profile = mentorProfileRepository.findByIdAndApprovalStatusAndAccountStatus(
-                        mentorId,
-                        MentorApprovalStatus.APPROVED,
-                        AccountStatus.ACTIVE
-                )
+        var profile = mentorProfileRepository.findOne(MentorSearchSpecifications.visible()
+                        .and((root, query, cb) -> cb.equal(root.get("id"), mentorId)))
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "MENTOR_PROFILE_NOT_FOUND", "Mentor profile not found."));
 
         return MentorDetailResponse.builder()
