@@ -24,14 +24,14 @@ import org.springframework.transaction.annotation.Transactional;
 @PreAuthorize("isAuthenticated()")
 public class UpsertCurrentMentorVerificationUseCase {
 
-    private final MentorProfileRepository profiles;
-    private final MentorVerificationRepository verifications;
+    private final MentorProfileRepository mentorProfileRepository;
+    private final MentorVerificationRepository mentorVerificationRepository;
     private final Validator validator;
 
-    public UpsertCurrentMentorVerificationUseCase(MentorProfileRepository profiles,
-                                                  MentorVerificationRepository verifications, Validator validator) {
-        this.profiles = profiles;
-        this.verifications = verifications;
+    public UpsertCurrentMentorVerificationUseCase(MentorProfileRepository mentorProfileRepository,
+                                                  MentorVerificationRepository mentorVerificationRepository, Validator validator) {
+        this.mentorProfileRepository = mentorProfileRepository;
+        this.mentorVerificationRepository = mentorVerificationRepository;
         this.validator = validator;
     }
 
@@ -51,15 +51,15 @@ public class UpsertCurrentMentorVerificationUseCase {
         }
 
         // CREATE DRAFT PROFILE
-        var profile = profiles.findByUserId(userId).orElseGet(() -> {
+        var profile = mentorProfileRepository.findByUserId(userId).orElseGet(() -> {
             var draft = new MentorProfile();
             draft.setUserId(userId);
             draft.setAvatarUrl("");
             draft.setApprovalStatus(MentorApprovalStatus.DRAFT);
-            return profiles.saveAndFlush(draft);
+            return mentorProfileRepository.saveAndFlush(draft);
         });
 
-        var existing = verifications.findByMentorId(profile.getId());
+        var existing = mentorVerificationRepository.findByMentorId(profile.getId());
         if (existing.isPresent() && existing.get().getVerificationStatus() != MentorVerificationStatus.REJECTED) {
             throw new ApiException(HttpStatus.CONFLICT, "VERIFICATION_NOT_EDITABLE", "Mentor verification cannot be updated.");
         }
@@ -82,7 +82,7 @@ public class UpsertCurrentMentorVerificationUseCase {
         verification.setVerifiedAt(null);
         verification.setRejectionReason(null);
 
-        var saved = verifications.saveAndFlush(verification);
+        var saved = mentorVerificationRepository.saveAndFlush(verification);
 
         return CurrentMentorVerificationResponse.builder()
                 .id(saved.getId())

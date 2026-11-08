@@ -23,11 +23,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class GetAdminMentorVerificationsUseCase {
 
-    private final MentorVerificationRepository repository;
+    private final MentorVerificationRepository mentorVerificationRepository;
     private final Validator validator;
 
-    public GetAdminMentorVerificationsUseCase(MentorVerificationRepository repository, Validator validator) {
-        this.repository = repository;
+    public GetAdminMentorVerificationsUseCase(MentorVerificationRepository mentorVerificationRepository, Validator validator) {
+        this.mentorVerificationRepository = mentorVerificationRepository;
         this.validator = validator;
     }
 
@@ -49,7 +49,7 @@ public class GetAdminMentorVerificationsUseCase {
                 Sort.by(Sort.Direction.DESC, "createdAt", "id")
         );
 
-        Page<MentorVerification> page = query.status() == null ? repository.findAll(pageable) : repository.findByVerificationStatus(query.status(), pageable);
+        Page<MentorVerification> page = query.status() == null ? mentorVerificationRepository.findAll(pageable) : mentorVerificationRepository.findByVerificationStatus(query.status(), pageable);
 
         var items = page.getContent().stream().map(v -> AdminMentorVerificationItemResponse.builder()
                 .id(v.getId())

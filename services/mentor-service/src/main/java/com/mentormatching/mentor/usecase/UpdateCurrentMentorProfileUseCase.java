@@ -19,11 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
 @PreAuthorize("hasRole('MENTOR')")
 public class UpdateCurrentMentorProfileUseCase {
 
-    private final MentorProfileRepository repository;
+    private final MentorProfileRepository mentorProfileRepository;
     private final Validator validator;
 
-    public UpdateCurrentMentorProfileUseCase(MentorProfileRepository repository, Validator validator) {
-        this.repository = repository;
+    public UpdateCurrentMentorProfileUseCase(MentorProfileRepository mentorProfileRepository, Validator validator) {
+        this.mentorProfileRepository = mentorProfileRepository;
         this.validator = validator;
     }
 
@@ -44,7 +44,7 @@ public class UpdateCurrentMentorProfileUseCase {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Invalid mentor profile.");
         }
 
-        var profile = repository.findByUserId(userId)
+        var profile = mentorProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "MENTOR_PROFILE_NOT_FOUND", "Mentor profile not found."));
 
         profile.setGender(command.gender());
@@ -60,7 +60,7 @@ public class UpdateCurrentMentorProfileUseCase {
         profile.setMajor(command.major());
         profile.setMeetingType(command.meetingType());
 
-        var saved = repository.saveAndFlush(profile);
+        var saved = mentorProfileRepository.saveAndFlush(profile);
 
         return MentorProfileDetails.builder()
                 .id(saved.getId())

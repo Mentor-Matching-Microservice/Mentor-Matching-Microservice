@@ -20,6 +20,11 @@ public interface MentorProfileRepository extends JpaRepository<MentorProfile, Lo
 
     Optional<MentorProfile> findByUserId(UUID userId);
 
+    /** Tuần tự hóa các lần thay tập tính cách và điểm nổi bật của cùng mentor. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from MentorProfile p where p.userId = :userId")
+    Optional<MentorProfile> findByUserIdForTraitsUpdate(@Param("userId") UUID userId);
+
     /** Khóa hồ sơ để các lần thêm/sửa môn của cùng mentor không vượt qua kiểm tra trùng đồng thời. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from MentorProfile p where p.userId = :userId")

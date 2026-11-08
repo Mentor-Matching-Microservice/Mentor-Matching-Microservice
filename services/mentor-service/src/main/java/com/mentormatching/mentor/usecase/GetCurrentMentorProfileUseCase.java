@@ -15,10 +15,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class GetCurrentMentorProfileUseCase {
     
-    private final MentorProfileRepository repository;
+    private final MentorProfileRepository mentorProfileRepository;
 
-    public GetCurrentMentorProfileUseCase(MentorProfileRepository repository) {
-        this.repository = repository;
+    public GetCurrentMentorProfileUseCase(MentorProfileRepository mentorProfileRepository) {
+        this.mentorProfileRepository = mentorProfileRepository;
     }
 
     /**
@@ -29,7 +29,7 @@ public class GetCurrentMentorProfileUseCase {
         if (userId == null) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "User ID is required.");
         }
-        var profile = repository.findByUserId(userId)
+        var profile = mentorProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "MENTOR_PROFILE_NOT_FOUND", "Mentor profile not found."));
 
         return MentorProfileDetails.builder()

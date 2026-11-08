@@ -21,12 +21,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class GetCurrentMentorSubjectsUseCase {
 
-    private final MentorProfileRepository profiles;
-    private final MentorSubjectRepository subjects;
+    private final MentorProfileRepository mentorProfileRepository;
+    private final MentorSubjectRepository mentorSubjectRepository;
 
-    public GetCurrentMentorSubjectsUseCase(MentorProfileRepository profiles, MentorSubjectRepository subjects) {
-        this.profiles = profiles;
-        this.subjects = subjects;
+    public GetCurrentMentorSubjectsUseCase(MentorProfileRepository mentorProfileRepository, MentorSubjectRepository mentorSubjectRepository) {
+        this.mentorProfileRepository = mentorProfileRepository;
+        this.mentorSubjectRepository = mentorSubjectRepository;
     }
 
     /**
@@ -41,11 +41,11 @@ public class GetCurrentMentorSubjectsUseCase {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "User ID is required.");
         }
 
-        var profile = profiles.findByUserId(userId)
+        var profile = mentorProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "MENTOR_PROFILE_NOT_FOUND",
                         "Mentor profile not found."));
 
-        return subjects.findAllByMentorIdOrderByIdAsc(profile.getId()).stream()
+        return mentorSubjectRepository.findAllByMentorIdOrderByIdAsc(profile.getId()).stream()
                 .map(this::toDetails)
                 .toList();
     }

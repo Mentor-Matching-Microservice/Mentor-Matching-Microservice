@@ -19,13 +19,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class GetCurrentMentorVerificationUseCase {
 
-    private final MentorProfileRepository profiles;
-    private final MentorVerificationRepository verifications;
+    private final MentorProfileRepository mentorProfileRepository;
+    private final MentorVerificationRepository mentorVerificationRepository;
 
-    public GetCurrentMentorVerificationUseCase(MentorProfileRepository profiles,
-                                               MentorVerificationRepository verifications) {
-        this.profiles = profiles;
-        this.verifications = verifications;
+    public GetCurrentMentorVerificationUseCase(MentorProfileRepository mentorProfileRepository,
+                                               MentorVerificationRepository mentorVerificationRepository) {
+        this.mentorProfileRepository = mentorProfileRepository;
+        this.mentorVerificationRepository = mentorVerificationRepository;
     }
 
     /**
@@ -40,10 +40,10 @@ public class GetCurrentMentorVerificationUseCase {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "User ID is required.");
         }
 
-        var profile = profiles.findByUserId(userId)
+        var profile = mentorProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "MENTOR_PROFILE_NOT_FOUND",
                         "Mentor profile not found."));
-        var verification = verifications.findByMentorId(profile.getId())
+        var verification = mentorVerificationRepository.findByMentorId(profile.getId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "MENTOR_VERIFICATION_NOT_FOUND",
                         "Mentor verification not found."));
 

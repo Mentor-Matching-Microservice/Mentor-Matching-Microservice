@@ -16,10 +16,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class GetMentorDetailUseCase {
 
-    private final MentorProfileRepository repository;
+    private final MentorProfileRepository mentorProfileRepository;
 
-    public GetMentorDetailUseCase(MentorProfileRepository repository) {
-        this.repository = repository;
+    public GetMentorDetailUseCase(MentorProfileRepository mentorProfileRepository) {
+        this.mentorProfileRepository = mentorProfileRepository;
     }
 
     /**
@@ -34,7 +34,7 @@ public class GetMentorDetailUseCase {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Mentor ID must be positive.");
         }
 
-        var profile = repository.findByIdAndApprovalStatusAndAccountStatus(
+        var profile = mentorProfileRepository.findByIdAndApprovalStatusAndAccountStatus(
                         mentorId,
                         MentorApprovalStatus.APPROVED,
                         AccountStatus.ACTIVE

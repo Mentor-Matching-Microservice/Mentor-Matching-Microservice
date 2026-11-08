@@ -25,20 +25,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class SearchMentorsUseCase {
 
-    private final MentorProfileRepository profiles;
-    private final MentorSubjectRepository subjects;
+    private final MentorProfileRepository mentorProfileRepository;
+    private final MentorSubjectRepository mentorSubjectRepository;
     private final Validator validator;
 
     /**
      * Khởi tạo use case tìm kiếm.
      *
-     * @param profiles  repository truy vấn hồ sơ và phân trang
-     * @param subjects  repository tổng hợp giá các môn đang hoạt động
+     * @param mentorProfileRepository  repository truy vấn hồ sơ và phân trang
+     * @param mentorSubjectRepository  repository tổng hợp giá các môn đang hoạt động
      * @param validator validator kiểm tra query cả khi caller không đi qua HTTP
      */
-    public SearchMentorsUseCase(MentorProfileRepository profiles, MentorSubjectRepository subjects, Validator validator) {
-        this.profiles = profiles;
-        this.subjects = subjects;
+    public SearchMentorsUseCase(MentorProfileRepository mentorProfileRepository, MentorSubjectRepository mentorSubjectRepository, Validator validator) {
+        this.mentorProfileRepository = mentorProfileRepository;
+        this.mentorSubjectRepository = mentorSubjectRepository;
         this.validator = validator;
     }
 
@@ -71,10 +71,10 @@ public class SearchMentorsUseCase {
                 query.page(),
                 query.size(),
                 Sort.by(direction, field).and(Sort.by(direction, "id")));
-        var page = profiles.findAll(MentorSearchSpecifications.matching(query), pageRequest);
+        var page = mentorProfileRepository.findAll(MentorSearchSpecifications.matching(query), pageRequest);
 
         // Get Min Price Of Mentor From Mentor Search Paging, Store Map
-        Map<Long, BigDecimal> prices = page.isEmpty() ? Map.of() : subjects.findMinimumActivePrices(
+        Map<Long, BigDecimal> prices = page.isEmpty() ? Map.of() : mentorSubjectRepository.findMinimumActivePrices(
                         page.getContent()
                                 .stream()
                                 .map(MentorProfile::getId)

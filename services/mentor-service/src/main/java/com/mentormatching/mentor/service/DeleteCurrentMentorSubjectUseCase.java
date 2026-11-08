@@ -15,12 +15,12 @@ import org.springframework.transaction.annotation.Transactional;
 @PreAuthorize("hasRole('MENTOR')")
 public class DeleteCurrentMentorSubjectUseCase {
 
-    private final MentorProfileRepository profiles;
-    private final MentorSubjectRepository subjects;
+    private final MentorProfileRepository mentorProfileRepository;
+    private final MentorSubjectRepository mentorSubjectRepository;
 
-    public DeleteCurrentMentorSubjectUseCase(MentorProfileRepository profiles, MentorSubjectRepository subjects) {
-        this.profiles = profiles;
-        this.subjects = subjects;
+    public DeleteCurrentMentorSubjectUseCase(MentorProfileRepository mentorProfileRepository, MentorSubjectRepository mentorSubjectRepository) {
+        this.mentorProfileRepository = mentorProfileRepository;
+        this.mentorSubjectRepository = mentorSubjectRepository;
     }
 
     /**
@@ -37,16 +37,16 @@ public class DeleteCurrentMentorSubjectUseCase {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Invalid mentor subject ID.");
         }
 
-        var profile = profiles.findByUserId(userId)
+        var profile = mentorProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "MENTOR_PROFILE_NOT_FOUND",
                         "Mentor profile not found."));
-        var subject = subjects.findByIdAndMentorId(mentorSubjectId, profile.getId())
+        var subject = mentorSubjectRepository.findByIdAndMentorId(mentorSubjectId, profile.getId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "MENTOR_SUBJECT_NOT_FOUND",
                         "Mentor subject not found."));
 
         if (!Boolean.FALSE.equals(subject.getActive())) {
             subject.setActive(false);
-            subjects.save(subject);
+            mentorSubjectRepository.save(subject);
         }
     }
 }

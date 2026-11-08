@@ -22,11 +22,11 @@ import org.springframework.transaction.annotation.Transactional;
 @PreAuthorize("hasRole('ADMIN')")
 public class ReviewMentorVerificationUseCase {
 
-    private final MentorVerificationRepository repository;
+    private final MentorVerificationRepository mentorVerificationRepository;
     private final Validator validator;
 
-    public ReviewMentorVerificationUseCase(MentorVerificationRepository repository, Validator validator) {
-        this.repository = repository;
+    public ReviewMentorVerificationUseCase(MentorVerificationRepository mentorVerificationRepository, Validator validator) {
+        this.mentorVerificationRepository = mentorVerificationRepository;
         this.validator = validator;
     }
 
@@ -52,7 +52,7 @@ public class ReviewMentorVerificationUseCase {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Invalid mentor verification review.");
         }
 
-        var verification = repository.findForReviewById(verificationId)
+        var verification = mentorVerificationRepository.findForReviewById(verificationId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "MENTOR_VERIFICATION_NOT_FOUND",
                         "Mentor verification not found."));
         if (verification.getVerificationStatus() != MentorVerificationStatus.PENDING) {
@@ -74,7 +74,7 @@ public class ReviewMentorVerificationUseCase {
             verification.setRejectionReason(command.rejectionReason());
         }
 
-        var saved = repository.saveAndFlush(verification);
+        var saved = mentorVerificationRepository.saveAndFlush(verification);
 
         return MentorVerificationReviewResponse.builder()
                 .id(saved.getId())

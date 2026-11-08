@@ -21,15 +21,15 @@ import org.springframework.transaction.annotation.Transactional;
 @PreAuthorize("hasRole('MENTOR')")
 public class UpsertCurrentMentorSubjectUseCase {
 
-    private final MentorProfileRepository profiles;
-    private final MentorSubjectRepository subjects;
+    private final MentorProfileRepository mentorProfileRepository;
+    private final MentorSubjectRepository mentorSubjectRepository;
     private final Validator validator;
 
-    public UpsertCurrentMentorSubjectUseCase(MentorProfileRepository profiles,
-                                             MentorSubjectRepository subjects,
+    public UpsertCurrentMentorSubjectUseCase(MentorProfileRepository mentorProfileRepository,
+                                             MentorSubjectRepository mentorSubjectRepository,
                                              Validator validator) {
-        this.profiles = profiles;
-        this.subjects = subjects;
+        this.mentorProfileRepository = mentorProfileRepository;
+        this.mentorSubjectRepository = mentorSubjectRepository;
         this.validator = validator;
     }
 
@@ -49,23 +49,23 @@ public class UpsertCurrentMentorSubjectUseCase {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Invalid mentor subject.");
         }
 
-        var profile = profiles.findByUserIdForSubjectUpdate(userId)
+        var profile = mentorProfileRepository.findByUserIdForSubjectUpdate(userId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "MENTOR_PROFILE_NOT_FOUND",
                         "Mentor profile not found."));
         var mentorId = profile.getId();
 
         MentorSubject subject;
         if (command.id() == null) {
-            if (subjects.existsByMentorIdAndSubjectGradeId(mentorId, command.subjectGradeId())) {
+            if (mentorSubjectRepository.existsByMentorIdAndSubjectGradeId(mentorId, command.subjectGradeId())) {
                 throw duplicateSubject();
             }
             subject = new MentorSubject();
             subject.setMentorId(mentorId);
         } else {
-            subject = subjects.findByIdAndMentorId(command.id(), mentorId)
+            subject = mentorSubjectRepository.findByIdAndMentorId(command.id(), mentorId)
                     .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "MENTOR_SUBJECT_NOT_FOUND",
                             "Mentor subject not found."));
-            if (subjects.existsByMentorIdAndSubjectGradeIdAndIdNot(mentorId, command.subjectGradeId(), command.id())) {
+            if (mentorSubjectRepository.existsByMentorIdAndSubjectGradeIdAndIdNot(mentorId, command.subjectGradeId(), command.id())) {
                 throw duplicateSubject();
             }
         }
@@ -76,7 +76,7 @@ public class UpsertCurrentMentorSubjectUseCase {
         subject.setPricePerHour(command.pricePerHour());
         subject.setActive(command.active());
 
-        var saved = subjects.save(subject);
+        var saved = mentorSubjectRepository.save(subject);
         return MentorSubjectDetails.builder()
                 .id(saved.getId())
                 .mentorId(saved.getMentorId())

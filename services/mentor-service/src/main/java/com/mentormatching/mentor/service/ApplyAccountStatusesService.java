@@ -14,16 +14,16 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class ApplyAccountStatusesService {
-    private final MentorProfileRepository repository;
+    private final MentorProfileRepository mentorProfileRepository;
     private final Validator validator;
 
     /**
      * Khởi tạo service cập nhật trạng thái theo version.
-     * @param repository repository thực hiện cập nhật có điều kiện theo UUID và version
+     * @param mentorProfileRepository repository thực hiện cập nhật có điều kiện theo UUID và version
      * @param validator validator kiểm tra cấu trúc snapshot trước khi ghi
      */
-    public ApplyAccountStatusesService(MentorProfileRepository repository, Validator validator) {
-        this.repository = repository;
+    public ApplyAccountStatusesService(MentorProfileRepository mentorProfileRepository, Validator validator) {
+        this.mentorProfileRepository = mentorProfileRepository;
         this.validator = validator;
     }
 
@@ -44,7 +44,7 @@ public class ApplyAccountStatusesService {
         }
         int updated = 0;
         for (var account : response.accounts()) {
-            updated += repository.applyAccountStatus(account.userId(), account.status(), account.version());
+            updated += mentorProfileRepository.applyAccountStatus(account.userId(), account.status(), account.version());
         }
         return updated;
     }
