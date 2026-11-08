@@ -13,7 +13,10 @@ public record MediaProperties(String cloudName, String apiKey, String apiSecret,
         apiSecret = apiSecret == null ? "" : apiSecret;
         uploadFolder = uploadFolder == null || uploadFolder.isBlank() ? "mentor-matching" : uploadFolder;
         uploadIntentTtl = uploadIntentTtl == null ? Duration.ofMinutes(30) : uploadIntentTtl;
-        privateUrlTtl = privateUrlTtl == null ? Duration.ofMinutes(10) : privateUrlTtl;
+        if (privateUrlTtl == null || privateUrlTtl.compareTo(Duration.ofMinutes(5)) < 0
+                || privateUrlTtl.compareTo(Duration.ofMinutes(15)) > 0) {
+            privateUrlTtl = Duration.ofMinutes(10);
+        }
         if (cleanupDelayMs < 1000) cleanupDelayMs = 3600000;
     }
 }

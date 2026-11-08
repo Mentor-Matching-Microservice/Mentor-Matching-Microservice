@@ -105,13 +105,16 @@ public class CloudinaryService {
     }
 
     public String privateUrl(MediaAsset asset) {
+        return privateUrl(asset, Instant.now().plus(config.privateUrlTtl()));
+    }
+
+    public String privateUrl(MediaAsset asset, Instant expiresAt) {
         ensureConfigured();
-        long expiresAt = Instant.now().plus(config.privateUrlTtl()).getEpochSecond();
         try {
             return cloudinary.privateDownload(asset.getPublicId(), asset.getFormat(), Map.of(
                     "resource_type", asset.getResourceType(),
                     "type", deliveryType(asset),
-                    "expires_at", expiresAt,
+                    "expires_at", expiresAt.getEpochSecond(),
                     "secure", true));
         } catch (Exception exception) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,

@@ -25,6 +25,8 @@ public class MongoIndexInitializer implements ApplicationRunner {
                 .named("owner_status_created"));
         indexes.ensureIndex(new Index().on("status", Sort.Direction.ASC)
                 .on("expiresAt", Sort.Direction.ASC).named("status_expires_at"));
+        indexes.ensureIndex(new Index().on("status", Sort.Direction.ASC)
+                .on("createdAt", Sort.Direction.ASC).named("status_created_at"));
         indexes.ensureIndex(new Index().on("publicId", Sort.Direction.ASC)
                 .unique().named("public_id_unique"));
         indexes.ensureIndex(new Index().on("purgeAt", Sort.Direction.ASC)

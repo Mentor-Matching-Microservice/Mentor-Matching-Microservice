@@ -1,6 +1,8 @@
 package com.mentormatching.media.domain;
 
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -29,6 +31,7 @@ public class MediaAsset {
     private Instant expiresAt;
     private Instant deletedAt;
     private Instant purgeAt;
+    private Set<String> usageKeys = new HashSet<>();
     protected MediaAsset() {}
     public MediaAsset(String ownerId, String purpose, String resourceType, String accessType, String publicId,
                       String originalFilename, String mimeType, long expectedSize, Instant expiresAt) {
@@ -41,9 +44,16 @@ public class MediaAsset {
         this.assetId=assetId; this.secureUrl=secureUrl; this.size=size; this.width=width; this.height=height;
         this.version=version; this.format=format; this.etag=etag; this.status="READY"; this.updatedAt=Instant.now();
     }
+    public void markUsed(String usageKey) {
+        if (usageKeys == null) usageKeys = new HashSet<>();
+        usageKeys.add(usageKey);
+        this.updatedAt = Instant.now();
+    }
     public void delete(String finalStatus) {
-        this.status=finalStatus; this.deletedAt=Instant.now();
-        this.purgeAt=this.deletedAt.plusSeconds(30L*24*60*60); this.updatedAt=this.deletedAt;
+        this.status = finalStatus;
+        this.deletedAt = Instant.now();
+        this.purgeAt = this.deletedAt.plusSeconds(30L * 24 * 60 * 60);
+        this.updatedAt = this.deletedAt;
     }
     public String getId(){return id;} public String getOwnerId(){return ownerId;} public String getPurpose(){return purpose;}
     public String getResourceType(){return resourceType;} public String getAccessType(){return accessType;} public String getStatus(){return status;}
@@ -53,4 +63,5 @@ public class MediaAsset {
     public Long getVersion(){return version;} public String getFormat(){return format;} public String getEtag(){return etag;} public Instant getCreatedAt(){return createdAt;}
     public Instant getUpdatedAt(){return updatedAt;} public Instant getExpiresAt(){return expiresAt;}
     public Instant getDeletedAt(){return deletedAt;} public Instant getPurgeAt(){return purgeAt;}
+    public Set<String> getUsageKeys(){return usageKeys == null ? Set.of() : Set.copyOf(usageKeys);}
 }
