@@ -5,8 +5,8 @@ spring:
   application:
     name: payment-service
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/mm_payment}
-    username: ${DB_USERNAME:mm_payment}
+    url: ${DB_URL:jdbc:sqlserver://localhost:1433;databaseName=mm_payment;encrypt=true;trustServerCertificate=true}
+    username: ${DB_USERNAME:sa}
     password: ${DB_PASSWORD}
   flyway:
     enabled: true
@@ -46,7 +46,5 @@ payment:
   booking-service-url: ${BOOKING_SERVICE_URL:http://localhost:8084}
   stripe:
     secret-key: ${STRIPE_SECRET_KEY:}
-    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
     success-url: ${STRIPE_SUCCESS_URL:http://localhost:5173/payments/success?session_id={CHECKOUT_SESSION_ID}}
     cancel-url: ${STRIPE_CANCEL_URL:http://localhost:5173/payments/cancel}
-    reconcile-after: ${PAYMENT_RECONCILE_AFTER:PT30M}
