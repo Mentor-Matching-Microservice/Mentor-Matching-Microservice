@@ -1,6 +1,7 @@
 package com.mentormatching.mentor.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import com.mentormatching.mentor.entity.MentorSubject;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -10,6 +11,12 @@ import org.springframework.data.repository.query.Param;
 public interface MentorSubjectRepository extends JpaRepository<MentorSubject, Long> {
 
     List<MentorSubject> findAllByMentorId(Long mentorId);
+
+    Optional<MentorSubject> findByIdAndMentorId(Long id, Long mentorId);
+
+    boolean existsByMentorIdAndSubjectGradeIdAndIdNot(Long mentorId, Long subjectGradeId, Long id);
+
+    boolean existsByMentorIdAndSubjectGradeId(Long mentorId, Long subjectGradeId);
 
     /** Giá thấp nhất của tất cả môn đang hoạt động cho mỗi mentor trong trang. */
     @Query("""

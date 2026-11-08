@@ -7,9 +7,11 @@ import java.util.List;
 import com.mentormatching.mentor.entity.AccountStatus;
 import com.mentormatching.mentor.entity.MentorApprovalStatus;
 import com.mentormatching.mentor.entity.MentorProfile;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,6 +19,11 @@ import org.springframework.data.repository.query.Param;
 public interface MentorProfileRepository extends JpaRepository<MentorProfile, Long>, JpaSpecificationExecutor<MentorProfile> {
 
     Optional<MentorProfile> findByUserId(UUID userId);
+
+    /** Khóa hồ sơ để các lần thêm/sửa môn của cùng mentor không vượt qua kiểm tra trùng đồng thời. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from MentorProfile p where p.userId = :userId")
+    Optional<MentorProfile> findByUserIdForSubjectUpdate(@Param("userId") UUID userId);
 
     Optional<MentorProfile> findByIdAndApprovalStatusAndAccountStatus(
             Long id, MentorApprovalStatus approvalStatus, AccountStatus accountStatus);
