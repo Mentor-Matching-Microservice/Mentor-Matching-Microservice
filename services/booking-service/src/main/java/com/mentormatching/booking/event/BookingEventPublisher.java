@@ -18,4 +18,22 @@ public class BookingEventPublisher {
                 event.startTime(), event.endTime());
         applicationEventPublisher.publishEvent(event);
     }
+
+    public void publishBookingRejected(BookingRejectedEvent event) {
+        log.info("Publishing BookingRejectedEvent: bookingId={}, mentorUserId={}, reason={}",
+                event.bookingId(), event.mentorUserId(), event.cancelReason());
+        applicationEventPublisher.publishEvent(event);
+    }
+
+    public void publishBookingCompleted(BookingCompletedEvent event) {
+        log.info("Publishing BookingCompletedEvent: bookingId={}, mentorUserId={}",
+                event.bookingId(), event.mentorUserId());
+        applicationEventPublisher.publishEvent(event);
+    }
+
+    public void publishBookingCancelled(BookingCancelledEvent event) {
+        log.info("Publishing BookingCancelledEvent: bookingId={}, cancelledBy={}, reason={}",
+                event.bookingId(), event.cancelledBy(), event.cancelReason());
+        applicationEventPublisher.publishEvent(event);
+    }
 }

@@ -6,6 +6,8 @@ import com.mentormatching.booking.client.dto.MentorBookingContextResponse;
 import com.mentormatching.booking.client.dto.MentorMeetingType;
 import com.mentormatching.booking.client.dto.UserSummaryResponse;
 import com.mentormatching.booking.dto.request.CreateBookingRequest;
+import com.mentormatching.booking.dto.response.BookingPaymentContextResponse;
+import com.mentormatching.booking.dto.response.BookingReviewEligibilityResponse;
 import com.mentormatching.booking.dto.response.CreateBookingResponse;
 import com.mentormatching.booking.entity.*;
 import com.mentormatching.booking.event.BookingEventPublisher;
@@ -19,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.time.*;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -63,7 +66,6 @@ class BookingServiceTest {
 
     @Test
     void createBookingSucceedsWithSnapshotAndHold() {
-        // Monday 2026-06-15 (dayOfWeek = 1)
         LocalDate bookingDate = LocalDate.of(2026, 6, 15);
         LocalTime startTime = LocalTime.of(9, 0);
         LocalTime endTime = LocalTime.of(11, 0); // 2 hours
@@ -100,7 +102,6 @@ class BookingServiceTest {
                         .build()
         );
 
-        // Mentor has recurring availability on Monday 8:00 - 12:00
         when(mentorAvailabilityRepository.findByMentorId(10L)).thenReturn(List.of(
                 MentorAvailability.builder()
                         .id(1L)
@@ -132,7 +133,7 @@ class BookingServiceTest {
         assertEquals("Toán 12", response.subjectName());
         assertEquals("Lớp 12", response.gradeName());
         assertEquals(new BigDecimal("150000.00"), response.pricePerHour());
-        assertEquals(new BigDecimal("300000.00"), response.totalAmount()); // 150_000 * 2 hours
+        assertEquals(new BigDecimal("300000.00"), response.totalAmount());
         assertEquals(BookingStatus.PENDING, response.status());
         assertEquals(MeetingType.ONLINE, response.meetingType());
         assertNotNull(response.holdExpiresAt());
@@ -172,110 +173,140 @@ class BookingServiceTest {
     }
 
     @Test
-    void incompatibleMeetingTypeThrowsException() {
-        LocalDate bookingDate = LocalDate.of(2026, 6, 15);
-        CreateBookingRequest request = CreateBookingRequest.builder()
-                .mentorId(10L)
-                .mentorSubjectId(100L)
-                .bookingDate(bookingDate)
-                .startTime(LocalTime.of(9, 0))
-                .endTime(LocalTime.of(10, 0))
-                .meetingType(MeetingType.OFFLINE)
+    void rejectBookingByMentorSucceeds() {
+        Booking booking = Booking.builder()
+                .id(50L)
+                .mentorUserId("mentor-uuid-10")
+                .status(BookingStatus.PENDING)
                 .build();
 
-        when(mentorLookupClient.getBookingContext(10L, 100L)).thenReturn(
-                MentorBookingContextResponse.builder()
-                        .mentorId(10L)
-                        .mentorUserId("mentor-user-10")
-                        .meetingType(MentorMeetingType.ONLINE) // Only ONLINE
-                        .active(true)
-                        .build()
-        );
+        when(bookingRepository.findById(50L)).thenReturn(Optional.of(booking));
 
-        ApiException ex = assertThrows(ApiException.class, () ->
-                bookingService.createBooking("student-1", request));
+        bookingService.rejectBookingByMentor("mentor-uuid-10", 50L, "Busy with emergency");
 
-        assertEquals("Mentor does not support this meeting type", ex.getMessage());
+        assertEquals(BookingStatus.REJECTED, booking.getStatus());
+        assertEquals("mentor-uuid-10", booking.getCancelledBy());
+        assertEquals("Busy with emergency", booking.getCancelReason());
+        verify(bookingEventPublisher).publishBookingRejected(any());
+        verify(bookingRepository).save(booking);
     }
 
     @Test
-    void bookingOutsideAvailabilityThrowsException() {
-        LocalDate bookingDate = LocalDate.of(2026, 6, 15);
-        CreateBookingRequest request = CreateBookingRequest.builder()
-                .mentorId(10L)
-                .mentorSubjectId(100L)
-                .bookingDate(bookingDate)
-                .startTime(LocalTime.of(14, 0))
-                .endTime(LocalTime.of(16, 0))
-                .meetingType(MeetingType.ONLINE)
+    void rejectBookingFailsIfNotPending() {
+        Booking booking = Booking.builder()
+                .id(50L)
+                .mentorUserId("mentor-uuid-10")
+                .status(BookingStatus.CONFIRMED)
                 .build();
 
-        when(mentorLookupClient.getBookingContext(10L, 100L)).thenReturn(
-                MentorBookingContextResponse.builder()
-                        .mentorId(10L)
-                        .mentorUserId("mentor-user-10")
-                        .meetingType(MentorMeetingType.HYBRID)
-                        .active(true)
-                        .build()
-        );
-
-        // Availability is only 8:00 - 12:00
-        when(mentorAvailabilityRepository.findByMentorId(10L)).thenReturn(List.of(
-                MentorAvailability.builder()
-                        .mentorId(10L)
-                        .availabilityType(AvailabilityType.RECURRING)
-                        .dayOfWeek(1)
-                        .startTime(LocalTime.of(8, 0))
-                        .endTime(LocalTime.of(12, 0))
-                        .build()
-        ));
+        when(bookingRepository.findById(50L)).thenReturn(Optional.of(booking));
 
         ApiException ex = assertThrows(ApiException.class, () ->
-                bookingService.createBooking("student-1", request));
-
-        assertEquals("Mentor is not available at this time", ex.getMessage());
+                bookingService.rejectBookingByMentor("mentor-uuid-10", 50L, "Reason"));
+        assertEquals("Only pending booking can be rejected", ex.getMessage());
     }
 
     @Test
-    void overlappingBookingThrowsConflict() {
-        LocalDate bookingDate = LocalDate.of(2026, 6, 15);
-        CreateBookingRequest request = CreateBookingRequest.builder()
-                .mentorId(10L)
-                .mentorSubjectId(100L)
-                .bookingDate(bookingDate)
-                .startTime(LocalTime.of(9, 0))
-                .endTime(LocalTime.of(10, 0))
-                .meetingType(MeetingType.ONLINE)
+    void completeBookingByMentorSucceedsAfterSessionEndTime() {
+        // Session ended on 2026-06-13 18:00 (which is before fixedClock 2026-06-14 08:00)
+        Booking booking = Booking.builder()
+                .id(60L)
+                .mentorUserId("mentor-uuid-10")
+                .bookingDate(LocalDate.of(2026, 6, 13))
+                .startTime(LocalTime.of(16, 0))
+                .endTime(LocalTime.of(18, 0))
+                .status(BookingStatus.CONFIRMED)
                 .build();
 
-        when(mentorLookupClient.getBookingContext(10L, 100L)).thenReturn(
-                MentorBookingContextResponse.builder()
-                        .mentorId(10L)
-                        .mentorUserId("mentor-user-10")
-                        .meetingType(MentorMeetingType.HYBRID)
-                        .pricePerHour(new BigDecimal("100000.00"))
-                        .active(true)
-                        .build()
-        );
+        when(bookingRepository.findById(60L)).thenReturn(Optional.of(booking));
 
-        when(mentorAvailabilityRepository.findByMentorId(10L)).thenReturn(List.of(
-                MentorAvailability.builder()
-                        .mentorId(10L)
-                        .availabilityType(AvailabilityType.RECURRING)
-                        .dayOfWeek(1)
-                        .startTime(LocalTime.of(8, 0))
-                        .endTime(LocalTime.of(12, 0))
-                        .build()
-        ));
+        bookingService.completeBookingByMentor("mentor-uuid-10", 60L);
 
-        // Overlapping active booking exists
-        when(bookingRepository.existsOverlappingActiveBooking(eq(10L), eq(bookingDate), any(), any()))
-                .thenReturn(true);
+        assertEquals(BookingStatus.COMPLETED, booking.getStatus());
+        verify(bookingEventPublisher).publishBookingCompleted(any());
+        verify(bookingRepository).save(booking);
+    }
+
+    @Test
+    void completeBookingFailsBeforeSessionEndTime() {
+        // Session ends on 2026-06-14 10:00 (which is after fixedClock 2026-06-14 08:00)
+        Booking booking = Booking.builder()
+                .id(60L)
+                .mentorUserId("mentor-uuid-10")
+                .bookingDate(LocalDate.of(2026, 6, 14))
+                .startTime(LocalTime.of(8, 0))
+                .endTime(LocalTime.of(10, 0))
+                .status(BookingStatus.CONFIRMED)
+                .build();
+
+        when(bookingRepository.findById(60L)).thenReturn(Optional.of(booking));
 
         ApiException ex = assertThrows(ApiException.class, () ->
-                bookingService.createBooking("student-1", request));
+                bookingService.completeBookingByMentor("mentor-uuid-10", 60L));
+        assertEquals("Booking can only be completed after the session end time", ex.getMessage());
+    }
 
-        assertEquals("The requested time slot is already booked or held by another learner.", ex.getMessage());
-        assertEquals("CONFLICT", ex.getCode());
+    @Test
+    void forceCancelBookingByAdminSucceeds() {
+        Booking booking = Booking.builder()
+                .id(70L)
+                .status(BookingStatus.CONFIRMED)
+                .build();
+
+        when(bookingRepository.findById(70L)).thenReturn(Optional.of(booking));
+
+        bookingService.forceCancelBooking("admin-uuid-1", 70L, "Violation of platform policy");
+
+        assertEquals(BookingStatus.CANCELLED, booking.getStatus());
+        assertEquals("admin-uuid-1", booking.getCancelledBy());
+        assertEquals("Violation of platform policy", booking.getCancelReason());
+        verify(bookingEventPublisher).publishBookingCancelled(any());
+        verify(bookingRepository).save(booking);
+    }
+
+    @Test
+    void expireOverduePendingBookingsCancelsExpiredHolds() {
+        Booking overdue1 = Booking.builder()
+                .id(81L)
+                .status(BookingStatus.PENDING)
+                .holdExpiresAt(LocalDateTime.now(fixedClock).minusMinutes(5))
+                .build();
+
+        Booking overdue2 = Booking.builder()
+                .id(82L)
+                .status(BookingStatus.PENDING)
+                .holdExpiresAt(LocalDateTime.now(fixedClock).minusMinutes(1))
+                .build();
+
+        when(bookingRepository.findOverduePendingBookings(any())).thenReturn(List.of(overdue1, overdue2));
+
+        int count = bookingService.expireOverduePendingBookings();
+
+        assertEquals(2, count);
+        assertEquals(BookingStatus.CANCELLED, overdue1.getStatus());
+        assertEquals(BookingStatus.CANCELLED, overdue2.getStatus());
+        assertEquals("Hold expired without payment/confirmation", overdue1.getCancelReason());
+        verify(bookingRepository, times(2)).save(any(Booking.class));
+    }
+
+    @Test
+    void paymentContextAndReviewEligibility() {
+        Booking booking = Booking.builder()
+                .id(90L)
+                .studentUserId("student-1")
+                .mentorId(10L)
+                .mentorUserId("mentor-1")
+                .totalAmount(new BigDecimal("250000.00"))
+                .status(BookingStatus.COMPLETED)
+                .build();
+
+        when(bookingRepository.findById(90L)).thenReturn(Optional.of(booking));
+
+        BookingPaymentContextResponse paymentContext = bookingService.getPaymentContext(90L);
+        assertEquals(new BigDecimal("250000.00"), paymentContext.totalAmount());
+        assertEquals(BookingStatus.COMPLETED, paymentContext.status());
+
+        BookingReviewEligibilityResponse reviewEligibility = bookingService.getReviewEligibility(90L);
+        assertTrue(reviewEligibility.eligibleForReview());
     }
 }

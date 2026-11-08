@@ -10,3 +10,4 @@ public record UserSummaryResponse(
         String phone
 ) {
 }
+

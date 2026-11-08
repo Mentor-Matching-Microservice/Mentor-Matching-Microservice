@@ -15,7 +15,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -24,14 +26,16 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -107,5 +111,68 @@ class BookingControllerTest {
                 .andExpect(jsonPath("$.data.bookingId", is(101)))
                 .andExpect(jsonPath("$.data.totalAmount", is(200000.00)))
                 .andExpect(jsonPath("$.data.status", is("PENDING")));
+    }
+
+    @Test
+    void rejectBookingSucceedsWithMentorRole() throws Exception {
+        mvc.perform(patch("/api/v1/bookings/50/reject")
+                        .with(jwt().jwt(jwt -> jwt.subject("mentor-uuid-1"))
+                                .authorities(new SimpleGrantedAuthority("ROLE_MENTOR")))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"cancelReason\":\"Emergency schedule change\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)));
+
+        verify(bookingService).rejectBookingByMentor("mentor-uuid-1", 50L, "Emergency schedule change");
+    }
+
+    @Test
+    void completeBookingSucceedsWithMentorRole() throws Exception {
+        mvc.perform(patch("/api/v1/bookings/60/complete")
+                        .with(jwt().jwt(jwt -> jwt.subject("mentor-uuid-1"))
+                                .authorities(new SimpleGrantedAuthority("ROLE_MENTOR")))
+                        .with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)));
+
+        verify(bookingService).completeBookingByMentor("mentor-uuid-1", 60L);
+    }
+
+    @Test
+    void forceCancelBookingSucceedsWithAdminRole() throws Exception {
+        mvc.perform(patch("/api/v1/bookings/70/force-cancel")
+                        .with(jwt().jwt(jwt -> jwt.subject("admin-uuid-1"))
+                                .authorities(new SimpleGrantedAuthority("ROLE_ADMIN")))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"cancelReason\":\"Policy violation\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)));
+
+        verify(bookingService).forceCancelBooking("admin-uuid-1", 70L, "Policy violation");
+    }
+
+    @Test
+    void forceCancelBookingForbiddenForLearner() throws Exception {
+        mvc.perform(patch("/api/v1/bookings/70/force-cancel")
+                        .with(jwt().jwt(jwt -> jwt.subject("learner-uuid-1"))
+                                .authorities(new SimpleGrantedAuthority("ROLE_LEARNER")))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"cancelReason\":\"I want to cancel\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void getAdminBookingsSucceedsForAdmin() throws Exception {
+        when(bookingService.getBookings(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        mvc.perform(get("/api/v1/bookings")
+                        .with(jwt().jwt(jwt -> jwt.subject("admin-uuid-1"))
+                                .authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)));
     }
 }

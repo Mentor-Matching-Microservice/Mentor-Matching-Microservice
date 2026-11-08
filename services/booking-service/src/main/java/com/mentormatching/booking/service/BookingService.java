@@ -6,15 +6,20 @@ import com.mentormatching.booking.client.dto.MentorBookingContextResponse;
 import com.mentormatching.booking.client.dto.MentorMeetingType;
 import com.mentormatching.booking.client.dto.UserSummaryResponse;
 import com.mentormatching.booking.dto.request.CreateBookingRequest;
+import com.mentormatching.booking.dto.response.BookingPaymentContextResponse;
+import com.mentormatching.booking.dto.response.BookingReviewEligibilityResponse;
 import com.mentormatching.booking.dto.response.CreateBookingResponse;
 import com.mentormatching.booking.entity.*;
-import com.mentormatching.booking.event.BookingCreatedEvent;
-import com.mentormatching.booking.event.BookingEventPublisher;
+import com.mentormatching.booking.event.*;
 import com.mentormatching.booking.exception.ApiException;
 import com.mentormatching.booking.repository.BookingRepository;
 import com.mentormatching.booking.repository.MentorAvailabilityRepository;
+import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,7 +27,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -44,15 +51,12 @@ public class BookingService {
     public CreateBookingResponse createBooking(String studentUserId, CreateBookingRequest request) {
         validateTimeRange(request);
 
-        // Fetch authoritative profile summaries
         UserSummaryResponse student = userLookupClient.getUserSummary(studentUserId);
         MentorBookingContextResponse mentorContext = mentorLookupClient.getBookingContext(
                 request.getMentorId(), request.getMentorSubjectId());
 
-        // Domain validations
         validateBusinessRules(studentUserId, request, mentorContext);
 
-        // Concurrency-safe slot reservation
         return bookingConcurrencyLock.executeWithLock(request.getMentorId(), request.getBookingDate(), () -> {
             boolean overlapping = bookingRepository.existsOverlappingActiveBooking(
                     request.getMentorId(),
@@ -116,10 +120,105 @@ public class BookingService {
         });
     }
 
-    @Transactional(readOnly = true)
-    public CreateBookingResponse getBooking(Long bookingId) {
+    @Transactional
+    public void rejectBookingByMentor(String mentorUserId, Long bookingId, String cancelReason) {
+        if (cancelReason == null || cancelReason.isBlank()) {
+            throw ApiException.badRequest("Cancel reason is required when rejecting booking");
+        }
+
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> ApiException.notFound("Booking not found"));
+
+        ensureMentorOwnership(mentorUserId, booking);
+
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            throw ApiException.badRequest("Only pending booking can be rejected");
+        }
+
+        LocalDateTime now = LocalDateTime.now(clock);
+        booking.setStatus(BookingStatus.REJECTED);
+        booking.setCancelledBy(mentorUserId);
+        booking.setCancelReason(cancelReason.trim());
+        booking.setUpdatedAt(now);
+        bookingRepository.save(booking);
+
+        bookingEventPublisher.publishBookingRejected(BookingRejectedEvent.builder()
+                .bookingId(booking.getId())
+                .mentorUserId(mentorUserId)
+                .cancelReason(cancelReason.trim())
+                .timestamp(now)
+                .build());
+    }
+
+    @Transactional
+    public void completeBookingByMentor(String mentorUserId, Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> ApiException.notFound("Booking not found"));
+
+        ensureMentorOwnership(mentorUserId, booking);
+
+        if (booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw ApiException.badRequest("Only confirmed booking can be completed");
+        }
+
+        LocalDateTime now = LocalDateTime.now(clock);
+        LocalDateTime sessionEnd = LocalDateTime.of(booking.getBookingDate(), booking.getEndTime());
+        if (!now.isAfter(sessionEnd)) {
+            throw ApiException.badRequest("Booking can only be completed after the session end time");
+        }
+
+        booking.setStatus(BookingStatus.COMPLETED);
+        booking.setUpdatedAt(now);
+        bookingRepository.save(booking);
+
+        bookingEventPublisher.publishBookingCompleted(BookingCompletedEvent.builder()
+                .bookingId(booking.getId())
+                .mentorUserId(mentorUserId)
+                .timestamp(now)
+                .build());
+    }
+
+    @Transactional
+    public void forceCancelBooking(String adminUserId, Long bookingId, String cancelReason) {
+        if (cancelReason == null || cancelReason.isBlank()) {
+            throw ApiException.badRequest("Cancel reason is required when force cancelling booking");
+        }
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> ApiException.notFound("Booking not found"));
+
+        if (booking.getStatus() == BookingStatus.COMPLETED
+                || booking.getStatus() == BookingStatus.CANCELLED
+                || booking.getStatus() == BookingStatus.REJECTED) {
+            throw ApiException.badRequest("Booking in status " + booking.getStatus() + " cannot be force cancelled");
+        }
+
+        LocalDateTime now = LocalDateTime.now(clock);
+        booking.setStatus(BookingStatus.CANCELLED);
+        booking.setCancelledBy(adminUserId);
+        booking.setCancelReason(cancelReason.trim());
+        booking.setUpdatedAt(now);
+        bookingRepository.save(booking);
+
+        bookingEventPublisher.publishBookingCancelled(BookingCancelledEvent.builder()
+                .bookingId(booking.getId())
+                .cancelledBy(adminUserId)
+                .cancelReason(cancelReason.trim())
+                .timestamp(now)
+                .build());
+    }
+
+    @Transactional(readOnly = true)
+    public CreateBookingResponse getBooking(Long bookingId, String currentUserId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> ApiException.notFound("Booking not found"));
+
+        // If user is neither student nor mentor, and not admin, reject
+        if (currentUserId != null && !currentUserId.equals(booking.getStudentUserId())
+                && !currentUserId.equals(booking.getMentorUserId())) {
+            throw ApiException.forbidden("You do not have permission to view this booking");
+        }
+
         return CreateBookingResponse.from(booking);
     }
 
@@ -128,6 +227,90 @@ public class BookingService {
         return bookingRepository.findByStudentUserId(studentUserId).stream()
                 .map(CreateBookingResponse::from)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<CreateBookingResponse> getMentorBookings(String mentorUserId) {
+        return bookingRepository.findByMentorUserId(mentorUserId).stream()
+                .map(CreateBookingResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CreateBookingResponse> getBookings(BookingStatus status, MeetingType meetingType,
+                                                  String mentorName, String studentName,
+                                                  LocalDate bookingDateFrom, LocalDate bookingDateTo,
+                                                  Pageable pageable) {
+        Specification<Booking> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (status != null) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
+            if (meetingType != null) {
+                predicates.add(cb.equal(root.get("meetingType"), meetingType));
+            }
+            if (mentorName != null && !mentorName.isBlank()) {
+                predicates.add(cb.like(cb.lower(root.get("mentorName")), "%" + mentorName.toLowerCase() + "%"));
+            }
+            if (studentName != null && !studentName.isBlank()) {
+                predicates.add(cb.like(cb.lower(root.get("studentName")), "%" + studentName.toLowerCase() + "%"));
+            }
+            if (bookingDateFrom != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("bookingDate"), bookingDateFrom));
+            }
+            if (bookingDateTo != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("bookingDate"), bookingDateTo));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        return bookingRepository.findAll(spec, pageable).map(CreateBookingResponse::from);
+    }
+
+    @Transactional(readOnly = true)
+    public BookingPaymentContextResponse getPaymentContext(Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> ApiException.notFound("Booking not found"));
+        return BookingPaymentContextResponse.from(booking);
+    }
+
+    @Transactional(readOnly = true)
+    public BookingReviewEligibilityResponse getReviewEligibility(Long bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> ApiException.notFound("Booking not found"));
+        return BookingReviewEligibilityResponse.from(booking);
+    }
+
+    @Transactional
+    public int expireOverduePendingBookings() {
+        LocalDateTime now = LocalDateTime.now(clock);
+        List<Booking> overdue = bookingRepository.findOverduePendingBookings(now);
+        if (overdue.isEmpty()) {
+            return 0;
+        }
+
+        for (Booking booking : overdue) {
+            booking.setStatus(BookingStatus.CANCELLED);
+            booking.setCancelReason("Hold expired without payment/confirmation");
+            booking.setUpdatedAt(now);
+            bookingRepository.save(booking);
+
+            bookingEventPublisher.publishBookingCancelled(BookingCancelledEvent.builder()
+                    .bookingId(booking.getId())
+                    .cancelledBy("system-scheduler")
+                    .cancelReason("Hold expired without payment/confirmation")
+                    .timestamp(now)
+                    .build());
+        }
+
+        log.info("Expired and cancelled {} overdue pending bookings at {}", overdue.size(), now);
+        return overdue.size();
+    }
+
+    private void ensureMentorOwnership(String mentorUserId, Booking booking) {
+        if (booking.getMentorUserId() != null && !booking.getMentorUserId().equals(mentorUserId)) {
+            throw ApiException.notFound("Booking not found");
+        }
     }
 
     private void validateTimeRange(CreateBookingRequest request) {
