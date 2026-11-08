@@ -3,17 +3,18 @@ server:
 spring:
   application:
     name: media-service
+  mongodb:
+    uri: ${MONGODB_URI:mongodb://localhost:27017/mm_media?replicaSet=rs0}
   data:
     mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/mm_media}
-      auto-index-creation: true
+      auto-index-creation: false
 media:
   cloudinary:
     cloud-name: ${CLOUDINARY_CLOUD_NAME:}
     api-key: ${CLOUDINARY_API_KEY:}
     api-secret: ${CLOUDINARY_API_SECRET:}
     upload-folder: ${CLOUDINARY_UPLOAD_FOLDER:mentor-matching}
-    max-file-size-bytes: ${MEDIA_MAX_FILE_SIZE_BYTES:10485760}
+    max-file-size-bytes: ${MEDIA_MAX_FILE_SIZE_BYTES:5242880}
     upload-intent-ttl: ${MEDIA_UPLOAD_INTENT_TTL:PT30M}
     private-url-ttl: ${MEDIA_PRIVATE_URL_TTL:PT10M}
     cleanup-delay-ms: ${MEDIA_CLEANUP_DELAY_MS:3600000}
@@ -23,7 +24,7 @@ media:
     public-key-location: ${AUTH_JWT_PUBLIC_KEY_LOCATION:file:../auth-service/jwt-keys/public.pem}
 eureka:
   client:
-    enabled: ${EUREKA_ENABLED:false}
+    enabled: ${EUREKA_ENABLED:true}
     service-url:
       defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
 management:

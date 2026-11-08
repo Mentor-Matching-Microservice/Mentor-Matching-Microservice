@@ -1,6 +1,6 @@
 # media-service
 
-Media asset service using MongoDB metadata and Cloudinary storage. Uploads use server-signed direct upload intents; the browser uploads bytes directly to Cloudinary, then the service verifies the asset against Cloudinary Admin API before marking it ready.
+Media asset service using MongoDB metadata and Cloudinary storage. Uploads use server-signed direct upload intents; the browser uploads bytes directly to Cloudinary, then the service verifies the asset against the Cloudinary Admin API before marking it ready. The service connects to the `mm_media` database on a MongoDB replica set and initializes compound, unique and TTL indexes at startup. Live credentials are read from environment variables.
 
 ## API
 
@@ -14,4 +14,4 @@ All API routes require a JWT from auth-service. JWT issuer, audience and RSA pub
 
 ## Build and run
 
-From this directory, run `./mvnw -DskipTests package`. MongoDB and Cloudinary are only needed when running the service. Swagger can be enabled with `API_DOCS_ENABLED=true`.
+From this directory, run `docker compose up -d mongo` to start a local single-node replica set, then run `./mvnw clean verify`. Integration tests start their own MongoDB replica set with Testcontainers. Eureka discovery is enabled by default; use `EUREKA_ENABLED=false` for an isolated local run. Swagger can be enabled with `API_DOCS_ENABLED=true`.
