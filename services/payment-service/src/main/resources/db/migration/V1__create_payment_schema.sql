@@ -18,10 +18,11 @@ CREATE TABLE payments (
   created_at DATETIMEOFFSET(6) NOT NULL CONSTRAINT df_payments_created_at DEFAULT TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00'),
   updated_at DATETIMEOFFSET(6) NOT NULL CONSTRAINT df_payments_updated_at DEFAULT TODATETIMEOFFSET(SYSUTCDATETIME(), '+00:00'),
   CONSTRAINT uk_payment_booking UNIQUE (booking_id),
-  CONSTRAINT uk_payment_payer_idempotency UNIQUE (payer_id, idempotency_key),
-  CONSTRAINT uk_payment_provider_reference UNIQUE (provider_reference_id)
+  CONSTRAINT uk_payment_payer_idempotency UNIQUE (payer_id, idempotency_key)
 );
 
+CREATE UNIQUE INDEX uk_payment_provider_reference ON payments (provider_reference_id)
+  WHERE provider_reference_id IS NOT NULL;
 CREATE INDEX ix_payment_payer_created ON payments (payer_id, created_at DESC);
 CREATE INDEX ix_payment_mentor_created ON payments (mentor_id, created_at DESC);
 CREATE INDEX ix_payment_status_expiry ON payments (status, expires_at);

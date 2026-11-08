@@ -1,37 +1,45 @@
 # payment-service
 
-Payment checkout branch implements Stripe Checkout, payment lookup and checkout idempotency.
+Payment service creates Stripe Checkout sessions, records webhook outcomes, processes refunds and publishes payment events through a transactional outbox.
 
 - Java 21; Spring Boot 4.1.2; Spring Cloud 2025.1.4; Maven Wrapper riêng.
 - Package `com.mentormatching.payment`; port mặc định `8085`.
-- DBMS **Microsoft SQL Server**, database riêng `mm_payment` và user runtime riêng.
-- JDBC driver, Flyway module và Testcontainers theo đúng SQL Server.
-- Dependency chung và phiên bản: [service initialization](../../docs/service-initialization.md).
+- DBMS **Microsoft SQL Server**, database riêng `mm_payment`.
+- Flyway owns the `payments`, `payment_attempts`, `webhook_receipts`, `refund_transactions`, `outbox_events`, and `booking_event_receipts` tables. JPA validates the schema; it does not create it.
 
-## Build
+## Build and test
 
-Từ thư mục service:
+From this directory, run:
 
 ```bash
 ./mvnw clean verify
 ```
 
-`clean verify` chạy integration tests trên SQL Server bằng Testcontainers; Docker cần chạy. Không thay SQL Server bằng H2 vì Flyway migration dùng cú pháp và kiểu dữ liệu MSSQL.
+The integration suite uses a real SQL Server Testcontainer; Docker must be running. It covers migrations, checkout idempotency, mentor history authorization, invalid and duplicate Stripe webhooks, and automatic refunds for duplicate booking cancellation events.
 
-## Chạy sau khi chuẩn bị database
+## API
 
-Tạo database/user riêng; đặt `DB_PASSWORD` qua shell hoặc IDE. `DB_URL`, `DB_USERNAME`, `SERVER_PORT` có giá trị mặc định trong application.yml. `.env.example` là mẫu tham khảo, Spring Boot không tự nạp `.env`.
+- `POST /api/v1/payments` accepts a booking ID and `Idempotency-Key`; the amount is always read from Booking.
+- `GET /api/v1/payments/me` lists the authenticated learner's transactions.
+- `GET /api/v1/payments/mentor/me` lists a mentor's transactions and requires `ROLE_MENTOR`.
+- `GET /api/v1/payments/{id}` allows the payer, mentor for that booking, or an admin.
+- `POST /api/v1/payments/{id}/refund` is admin-only and idempotent.
+- `POST /api/v1/payments/stripe/webhook` validates the raw payload using `Stripe-Signature`.
+
+Checkout calls `GET /internal/v1/bookings/{bookingId}/payment-context` with the user's bearer token. Booking checks that the caller owns an unexpired `PENDING` booking and returns the authoritative amount and currency.
+
+## Events and local dependencies
+
+Payment status changes and their event payloads are inserted into SQL Server in the same transaction. `PaymentOutboxPublisher` publishes pending rows to the durable `mentor.events` RabbitMQ exchange and marks a row published only after broker confirmation. Consumers deduplicate using `eventId`.
+
+The service publishes `PaymentSucceeded`, `PaymentFailed`, and `PaymentRefunded` messages to `payment.events`. It consumes `BookingCancelled` and `BookingConfirmationFailed` from `payment.booking-lifecycle`; a successful booking event refund is also idempotent. Transient listener failures retry five times and then go to `payment.booking-lifecycle.dead` for reconciliation.
+
+Start local RabbitMQ with:
 
 ```bash
-./mvnw spring-boot:run
+docker run -d --name mm-rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:4-management
 ```
 
-Flyway bật, JPA chỉ validate. Startup cần SQL Server và credentials hợp lệ. Eureka mặc định tắt đến khi có Discovery. Swagger mặc định tắt; bật API_DOCS_ENABLED khi cần. Actuator expose health/info, ẩn health details. JWT decoder kiểm tra issuer, audience và RSA public key.
+The management UI is at `http://localhost:15672` (`guest` / `guest`). Set `PAYMENT_MESSAGING_ENABLED=false` only when intentionally running without event delivery.
 
-## API and Stripe setup
-
-- `POST /api/v1/payments` requires `Idempotency-Key` and `{ "bookingId": "UUID" }`. The service reads amount, currency, learner and mentor from Booking Service; callers cannot submit a price.
-- `GET /api/v1/payments/me`, `GET /api/v1/payments/mentor/me`, and `GET /api/v1/payments/{id}` return only records the caller is allowed to view.
-Payment calls `GET /internal/v1/bookings/{bookingId}/payment-context` with the current user's bearer token. Booking validates ownership, `PENDING` status, and an unexpired hold, then returns the authoritative amount and currency. The client cannot submit the amount. Requests require an `Idempotency-Key`.
-
-Configure `STRIPE_SECRET_KEY`, `AUTH_JWT_*`, and `BOOKING_SERVICE_URL`; sample values are in `.env.example`. Do not commit live Stripe secrets.
+Configure `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `AUTH_JWT_*`, `BOOKING_SERVICE_URL`, and `RABBITMQ_*` from the environment. `.env.example` contains local reference values; Spring Boot does not load `.env` automatically. Never commit live credentials.
