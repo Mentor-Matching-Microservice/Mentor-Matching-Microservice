@@ -14,6 +14,6 @@ public record MediaProperties(String cloudName, String apiKey, String apiSecret,
         uploadFolder = uploadFolder == null || uploadFolder.isBlank() ? "mentor-matching" : uploadFolder;
         uploadIntentTtl = uploadIntentTtl == null ? Duration.ofMinutes(30) : uploadIntentTtl;
         privateUrlTtl = privateUrlTtl == null ? Duration.ofMinutes(10) : privateUrlTtl;
-        if(cleanupDelayMs<1000) cleanupDelayMs=3600000;
+        if (cleanupDelayMs < 1000) cleanupDelayMs = 3600000;
     }
 }
