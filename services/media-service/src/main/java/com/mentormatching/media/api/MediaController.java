@@ -3,6 +3,7 @@ package com.mentormatching.media.api;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +29,19 @@ public class MediaController {
     public MediaRequests.AssetResponse confirm(@AuthenticationPrincipal Jwt jwt,@PathVariable String id,@Valid @RequestBody MediaRequests.Confirm request){
         return toResponse(service.confirm(id,subject(jwt),request.assetId()));
     }
+
+    @GetMapping("/{id}/signed-url")
+    public Map<String,String> signedUrl(@AuthenticationPrincipal Jwt jwt,@PathVariable String id){
+        return Map.of("url",service.signedUrl(id,subject(jwt)));
+    }
+
+    @GetMapping("/internal/{id}/signed-url")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Map<String,String> internalSignedUrl(@PathVariable String id){return Map.of("url",service.internalSignedUrl(id));}
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@AuthenticationPrincipal Jwt jwt,@PathVariable String id){service.delete(id,subject(jwt));}
 
     private static String subject(Jwt jwt){
         try{return java.util.UUID.fromString(jwt.getSubject()).toString();}
