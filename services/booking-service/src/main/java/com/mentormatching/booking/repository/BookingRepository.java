@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
@@ -18,6 +19,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
     List<Booking> findByStudentUserId(String studentUserId);
 
     List<Booking> findByMentorId(Long mentorId);
+
+    List<Booking> findByMentorUserId(String mentorUserId);
 
     List<Booking> findByStatus(BookingStatus status);
 
@@ -61,4 +64,13 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             @Param("bookingDate") LocalDate bookingDate,
             @Param("startTime") LocalTime startTime,
             @Param("endTime") LocalTime endTime);
+
+    @Query("""
+            SELECT b
+            FROM Booking b
+            WHERE b.status = com.mentormatching.booking.entity.BookingStatus.PENDING
+              AND b.holdExpiresAt IS NOT NULL
+              AND b.holdExpiresAt <= :now
+            """)
+    List<Booking> findOverduePendingBookings(@Param("now") LocalDateTime now);
 }

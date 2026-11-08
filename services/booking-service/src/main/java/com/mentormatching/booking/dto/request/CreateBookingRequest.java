@@ -40,3 +40,4 @@ public class CreateBookingRequest {
     @Size(max = 1000, message = "Booking note must not exceed 1000 characters")
     private String note;
 }
+

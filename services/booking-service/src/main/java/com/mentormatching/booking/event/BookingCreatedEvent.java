@@ -30,3 +30,4 @@ public record BookingCreatedEvent(
         LocalDateTime createdAt
 ) {
 }
+

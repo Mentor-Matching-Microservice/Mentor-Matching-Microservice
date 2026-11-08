@@ -41,6 +41,7 @@ public class SecurityConfiguration {
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/internal/**").permitAll()
                         // Public calendar and availability query endpoints
                         .requestMatchers(HttpMethod.GET, "/api/v1/mentors/*/calendar-booking").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/mentors/*/availabilities").permitAll()
