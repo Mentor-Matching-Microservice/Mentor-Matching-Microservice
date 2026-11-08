@@ -45,6 +45,7 @@ public class BookingService {
     private final MentorLookupClient mentorLookupClient;
     private final BookingConcurrencyLock bookingConcurrencyLock;
     private final BookingEventPublisher bookingEventPublisher;
+    private final BookingOutboxService bookingOutboxService;
     private final Clock clock;
 
     @Transactional
@@ -148,6 +149,8 @@ public class BookingService {
                 .cancelReason(cancelReason.trim())
                 .timestamp(now)
                 .build());
+
+        bookingOutboxService.recordBookingLifecycleEvent("BookingRejected", booking.getId(), cancelReason.trim());
     }
 
     @Transactional
@@ -206,6 +209,8 @@ public class BookingService {
                 .cancelReason(cancelReason.trim())
                 .timestamp(now)
                 .build());
+
+        bookingOutboxService.recordBookingLifecycleEvent("BookingCancelled", booking.getId(), cancelReason.trim());
     }
 
     @Transactional(readOnly = true)
@@ -301,6 +306,8 @@ public class BookingService {
                     .cancelReason("Hold expired without payment/confirmation")
                     .timestamp(now)
                     .build());
+
+            bookingOutboxService.recordBookingLifecycleEvent("BookingCancelled", booking.getId(), "Hold expired without payment/confirmation");
         }
 
         log.info("Expired and cancelled {} overdue pending bookings at {}", overdue.size(), now);

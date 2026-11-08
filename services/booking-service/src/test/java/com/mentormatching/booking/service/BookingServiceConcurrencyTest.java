@@ -50,6 +50,7 @@ class BookingServiceConcurrencyTest {
         userLookupClient = mock(UserLookupClient.class);
         mentorLookupClient = mock(MentorLookupClient.class);
         bookingEventPublisher = mock(BookingEventPublisher.class);
+        BookingOutboxService bookingOutboxService = mock(BookingOutboxService.class);
         EntityManager entityManager = mock(EntityManager.class, RETURNS_DEEP_STUBS);
 
         Clock fixedClock = Clock.fixed(Instant.parse("2026-06-14T01:00:00Z"), TEST_ZONE);
@@ -62,6 +63,7 @@ class BookingServiceConcurrencyTest {
                 mentorLookupClient,
                 concurrencyLock,
                 bookingEventPublisher,
+                bookingOutboxService,
                 fixedClock
         );
 

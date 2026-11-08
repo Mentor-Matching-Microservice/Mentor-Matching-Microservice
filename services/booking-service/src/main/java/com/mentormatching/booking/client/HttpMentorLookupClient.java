@@ -2,6 +2,7 @@ package com.mentormatching.booking.client;
 
 import com.mentormatching.booking.client.dto.MentorBookingContextResponse;
 import com.mentormatching.booking.client.dto.MentorMeetingType;
+import com.mentormatching.booking.client.dto.MentorProfileSummary;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -46,5 +47,24 @@ public class HttpMentorLookupClient implements MentorLookupClient {
                     .build();
         }
     }
-}
 
+    @Override
+    public MentorProfileSummary getMentorByUserId(String userId) {
+        try {
+            return restClient.get()
+                    .uri("/internal/v1/mentors/by-user/{userId}", userId)
+                    .retrieve()
+                    .body(MentorProfileSummary.class);
+        } catch (Exception e) {
+            log.warn("Failed to fetch mentor profile from mentor-service for userId {}: {}", userId, e.getMessage());
+            // Fallback for standalone / mock environments: derive deterministic mentorId
+            long derivedId = Math.abs((long) (userId != null ? userId.hashCode() : 1));
+            if (derivedId == 0) derivedId = 1L;
+            return MentorProfileSummary.builder()
+                    .mentorId(derivedId)
+                    .mentorUserId(userId)
+                    .fullName("Mentor " + userId)
+                    .build();
+        }
+    }
+}

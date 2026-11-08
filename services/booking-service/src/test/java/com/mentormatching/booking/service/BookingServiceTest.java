@@ -36,6 +36,7 @@ class BookingServiceTest {
     private UserLookupClient userLookupClient;
     private MentorLookupClient mentorLookupClient;
     private BookingEventPublisher bookingEventPublisher;
+    private BookingOutboxService bookingOutboxService;
     private BookingService bookingService;
     private Clock fixedClock;
 
@@ -46,6 +47,7 @@ class BookingServiceTest {
         userLookupClient = mock(UserLookupClient.class);
         mentorLookupClient = mock(MentorLookupClient.class);
         bookingEventPublisher = mock(BookingEventPublisher.class);
+        bookingOutboxService = mock(BookingOutboxService.class);
         EntityManager entityManager = mock(EntityManager.class, RETURNS_DEEP_STUBS);
 
         // Fixed at 2026-06-14 08:00:00 (Sunday)
@@ -60,6 +62,7 @@ class BookingServiceTest {
                 mentorLookupClient,
                 concurrencyLock,
                 bookingEventPublisher,
+                bookingOutboxService,
                 fixedClock
         );
     }

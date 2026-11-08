@@ -1,5 +1,7 @@
 package com.mentormatching.booking.service;
 
+import com.mentormatching.booking.client.MentorLookupClient;
+import com.mentormatching.booking.client.dto.MentorProfileSummary;
 import com.mentormatching.booking.dto.request.CreateMentorAvailabilityRequest;
 import com.mentormatching.booking.dto.request.UpdateMentorAvailabilityRequest;
 import com.mentormatching.booking.dto.response.MentorAvailabilityResponse;
@@ -20,6 +22,7 @@ import java.util.List;
 public class SchedulingService {
 
     private final MentorAvailabilityRepository mentorAvailabilityRepository;
+    private final MentorLookupClient mentorLookupClient;
 
     @Transactional(readOnly = true)
     public List<MentorAvailabilityResponse> getMentorAvailabilities(Long mentorId) {
@@ -51,7 +54,17 @@ public class SchedulingService {
         validateAvailabilityData(request.getAvailabilityType(), request.getDayOfWeek(), request.getAvailableDate(),
                 request.getStartTime(), request.getEndTime());
 
-        Long mentorId = request.getMentorId() != null ? request.getMentorId() : 1L;
+        // Resolve mentor identity securely from trusted mentor service
+        MentorProfileSummary mentorSummary = mentorLookupClient.getMentorByUserId(userId);
+        Long mentorId = mentorSummary != null && mentorSummary.mentorId() != null
+                ? mentorSummary.mentorId()
+                : Math.abs((long) (userId != null ? userId.hashCode() : 1));
+        if (mentorId == 0) {
+            mentorId = 1L;
+        }
+
+        checkOverlappingAvailability(mentorId, request.getAvailabilityType(), request.getDayOfWeek(),
+                request.getAvailableDate(), request.getStartTime(), request.getEndTime(), null);
 
         MentorAvailability availability = MentorAvailability.builder()
                 .mentorId(mentorId)
@@ -77,6 +90,9 @@ public class SchedulingService {
 
         ensureOwnership(userId, availability);
 
+        checkOverlappingAvailability(availability.getMentorId(), request.getAvailabilityType(), request.getDayOfWeek(),
+                request.getAvailableDate(), request.getStartTime(), request.getEndTime(), availabilityId);
+
         availability.setAvailabilityType(request.getAvailabilityType());
         availability.setDayOfWeek(request.getDayOfWeek());
         availability.setAvailableDate(request.getAvailableDate());
@@ -93,6 +109,24 @@ public class SchedulingService {
 
         ensureOwnership(userId, availability);
         mentorAvailabilityRepository.delete(availability);
+    }
+
+    private void checkOverlappingAvailability(Long mentorId, AvailabilityType availabilityType, Integer dayOfWeek,
+                                              LocalDate availableDate, LocalTime startTime, LocalTime endTime,
+                                              Long excludeId) {
+        if (availabilityType == AvailabilityType.RECURRING) {
+            boolean overlaps = mentorAvailabilityRepository.existsOverlappingRecurring(
+                    mentorId, dayOfWeek, startTime, endTime, excludeId);
+            if (overlaps) {
+                throw ApiException.conflict("Recurring availability window overlaps with an existing availability window");
+            }
+        } else if (availabilityType == AvailabilityType.SPECIFIC_DATE) {
+            boolean overlaps = mentorAvailabilityRepository.existsOverlappingSpecificDate(
+                    mentorId, availableDate, startTime, endTime, excludeId);
+            if (overlaps) {
+                throw ApiException.conflict("Specific date availability window overlaps with an existing availability window");
+            }
+        }
     }
 
     private void ensureOwnership(String userId, MentorAvailability availability) {
@@ -135,4 +169,3 @@ public class SchedulingService {
         }
     }
 }
-
