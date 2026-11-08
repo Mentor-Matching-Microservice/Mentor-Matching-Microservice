@@ -1,4 +1,4 @@
-package com.mentormatching.mentor.service;
+package com.mentormatching.mentor.usecase;
 
 import java.util.UUID;
 
@@ -14,7 +14,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Tạo hoặc thay thế môn dạy của mentor đang đăng nhập. */
+/**
+ * Tạo hoặc thay thế môn dạy của mentor đang đăng nhập.
+ */
 @Service
 @PreAuthorize("hasRole('MENTOR')")
 public class UpsertCurrentMentorSubjectUseCase {
@@ -35,7 +37,7 @@ public class UpsertCurrentMentorSubjectUseCase {
      * Caller lấy userId từ JWT sub. Giữ khóa trên profile trong transaction để các lần ghi
      * của cùng mentor không đồng thời thêm hai dòng có cùng subjectGradeId.
      *
-     * @param userId UUID tài khoản mentor đã xác thực
+     * @param userId  UUID tài khoản mentor đã xác thực
      * @param command môn dạy cần tạo hoặc thay thế
      * @return dữ liệu môn dạy đã lưu
      * @throws ApiException 400 nếu đầu vào sai; 404 nếu thiếu hồ sơ hoặc môn không thuộc mentor;

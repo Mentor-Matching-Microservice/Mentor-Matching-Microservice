@@ -1,4 +1,4 @@
-package com.mentormatching.mentor.service;
+package com.mentormatching.mentor.usecase;
 
 import com.mentormatching.mentor.dto.response.AdminMentorVerificationDetailResponse;
 import com.mentormatching.mentor.exception.ApiException;
@@ -9,7 +9,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Đọc chi tiết verification và hồ sơ mentor liên quan để admin review. */
+/**
+ * Đọc chi tiết verification và hồ sơ mentor liên quan để admin review.
+ */
 @Service
 @PreAuthorize("hasRole('ADMIN')")
 @Transactional(readOnly = true)

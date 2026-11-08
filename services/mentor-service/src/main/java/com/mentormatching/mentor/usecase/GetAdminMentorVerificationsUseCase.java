@@ -1,4 +1,4 @@
-package com.mentormatching.mentor.service;
+package com.mentormatching.mentor.usecase;
 
 import com.mentormatching.mentor.dto.query.GetAdminMentorVerificationsQuery;
 import com.mentormatching.mentor.dto.response.AdminMentorVerificationItemResponse;

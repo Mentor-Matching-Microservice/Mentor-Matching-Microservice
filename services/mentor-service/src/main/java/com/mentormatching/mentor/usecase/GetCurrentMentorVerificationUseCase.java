@@ -1,4 +1,4 @@
-package com.mentormatching.mentor.service;
+package com.mentormatching.mentor.usecase;
 
 import java.util.UUID;
 
@@ -11,7 +11,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Đọc hồ sơ xác minh của chính tài khoản đang đăng nhập, kể cả khi chưa có role MENTOR. */
+/**
+ * Đọc hồ sơ xác minh của chính tài khoản đang đăng nhập, kể cả khi chưa có role MENTOR.
+ */
 @Service
 @PreAuthorize("isAuthenticated()")
 @Transactional(readOnly = true)

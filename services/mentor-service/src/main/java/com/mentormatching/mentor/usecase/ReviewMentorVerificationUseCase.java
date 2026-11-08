@@ -1,4 +1,4 @@
-package com.mentormatching.mentor.service;
+package com.mentormatching.mentor.usecase;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -75,7 +75,7 @@ public class ReviewMentorVerificationUseCase {
         }
 
         var saved = repository.saveAndFlush(verification);
-        
+
         return MentorVerificationReviewResponse.builder()
                 .id(saved.getId())
                 .mentorId(saved.getMentorId())
