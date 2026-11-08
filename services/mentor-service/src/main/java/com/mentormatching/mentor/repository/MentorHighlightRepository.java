@@ -8,4 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface MentorHighlightRepository extends JpaRepository<MentorHighlight, Long> {
 
     List<MentorHighlight> findAllByMentorId(Long mentorId);
+
+    long countByMentorId(Long mentorId);
 }
