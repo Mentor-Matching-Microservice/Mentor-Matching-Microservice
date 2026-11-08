@@ -40,3 +40,4 @@ public class MentorCalendarController {
         return ResponseEntity.ok(ApiResponse.ok(response, "Get mentor availabilities successfully"));
     }
 }
+

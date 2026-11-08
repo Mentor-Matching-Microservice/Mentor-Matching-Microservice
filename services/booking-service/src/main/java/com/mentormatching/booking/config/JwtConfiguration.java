@@ -75,3 +75,4 @@ public class JwtConfiguration {
         return decoder;
     }
 }
+

@@ -63,3 +63,4 @@ public class MentorAvailability {
         updatedAt = LocalDateTime.now();
     }
 }
+

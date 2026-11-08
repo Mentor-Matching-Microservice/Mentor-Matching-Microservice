@@ -66,3 +66,4 @@ public class SchedulingController {
         return jwt != null ? jwt.getSubject() : "anonymous";
     }
 }
+

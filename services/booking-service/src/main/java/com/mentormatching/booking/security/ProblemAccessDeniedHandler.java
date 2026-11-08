@@ -25,3 +25,4 @@ public class ProblemAccessDeniedHandler implements AccessDeniedHandler {
         problems.write(HttpStatus.FORBIDDEN, request, response);
     }
 }
+

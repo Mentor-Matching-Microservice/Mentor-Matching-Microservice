@@ -26,7 +26,13 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             FROM Booking b
             WHERE b.mentorId = :mentorId
               AND b.bookingDate BETWEEN :from AND :to
-              AND b.status IN :statuses
+              AND (
+                  b.status = com.mentormatching.booking.entity.BookingStatus.CONFIRMED
+                  OR (
+                      b.status = com.mentormatching.booking.entity.BookingStatus.PENDING
+                      AND (b.holdExpiresAt IS NULL OR b.holdExpiresAt > CURRENT_TIMESTAMP)
+                  )
+              )
             ORDER BY b.bookingDate ASC, b.startTime ASC
             """)
     List<Booking> findScheduleBlockingBookings(
@@ -40,14 +46,19 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             FROM Booking b
             WHERE b.mentorId = :mentorId
               AND b.bookingDate = :bookingDate
-              AND b.status IN :statuses
+              AND (
+                  b.status = com.mentormatching.booking.entity.BookingStatus.CONFIRMED
+                  OR (
+                      b.status = com.mentormatching.booking.entity.BookingStatus.PENDING
+                      AND (b.holdExpiresAt IS NULL OR b.holdExpiresAt > CURRENT_TIMESTAMP)
+                  )
+              )
               AND b.startTime < :endTime
               AND b.endTime > :startTime
             """)
-    boolean existsOverlappingBooking(
+    boolean existsOverlappingActiveBooking(
             @Param("mentorId") Long mentorId,
             @Param("bookingDate") LocalDate bookingDate,
             @Param("startTime") LocalTime startTime,
-            @Param("endTime") LocalTime endTime,
-            @Param("statuses") List<BookingStatus> statuses);
+            @Param("endTime") LocalTime endTime);
 }

@@ -42,3 +42,4 @@ public interface MentorAvailabilityRepository extends JpaRepository<MentorAvaila
             @Param("from") LocalDate from,
             @Param("to") LocalDate to);
 }
+

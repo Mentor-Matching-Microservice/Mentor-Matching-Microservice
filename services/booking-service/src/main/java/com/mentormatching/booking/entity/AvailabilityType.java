@@ -4,3 +4,4 @@ public enum AvailabilityType {
     RECURRING,
     SPECIFIC_DATE
 }
+
