@@ -5,7 +5,8 @@ Eureka service registry của Mentor Matching (issue #58). Các service đăng k
 | Trạng thái | Nội dung |
 |---|---|
 | ✅ **Đã triển khai** | Eureka Server độc lập (standalone), bảo vệ bằng HTTP Basic, health/readiness probe công khai, dashboard tắt mặc định, cấu hình qua biến môi trường, Dockerfile, unit test + integration test (gồm một Eureka client thật), Postman collection |
-| ⏳ **Chưa tích hợp** (việc của các issue khác) | Business service chưa bật `EUREKA_ENABLED`; Gateway chưa dùng `lb://`; chưa có Docker Compose (#57). Xem [Việc tích hợp còn lại](#12-việc-tích-hợp-còn-lại) |
+| ✅ **Đã kiểm chứng đăng ký client** | 6 service đang có Eureka client (auth, user, mentor, booking, payment, review) đăng ký và hiện `UP` khi bật bằng biến môi trường. Không sửa code của các service này. Xem [Kiểm chứng đăng ký các service hiện có](#kiểm-chứng-đăng-ký-các-service-hiện-có-tiêu-chí-58) |
+| ⏳ **Việc của issue khác** | Gateway chưa dùng `lb://` (#59); catalog-service chưa có Eureka client và sẽ gộp vào mentor-service (#60); chưa có Docker Compose (#57). Xem [Việc tích hợp còn lại](#12-giới-hạn-đã-biết-và-việc-tích-hợp-còn-lại) |
 
 ---
 
@@ -238,6 +239,40 @@ Test không cần database, Docker hay credential thật. Integration test chạ
 
 Kết quả lần chạy khi hoàn thành #58 (Windows, JDK 21.0.10): `./mvnw clean verify` cho **24 unit test + 37 integration test, 0 lỗi**. Integration test được chạy thêm 2 lần nữa để kiểm tra độ ổn định, cả hai lần 37/37 pass.
 
+### Kiểm chứng đăng ký các service hiện có (tiêu chí #58)
+
+Script [verification/verify-client-registration.sh](verification/verify-client-registration.sh) chạy thật discovery-service cùng 6 service đang có Eureka client, **không sửa source** của các service này. Client được bật hoàn toàn bằng biến môi trường có sẵn (`EUREKA_ENABLED`, `EUREKA_URL`).
+
+Script làm các bước sau:
+1. Dựng MySQL 8.4 cho auth, user, mentor và PostgreSQL 16 cho booking, payment, review (đúng như trên `develop`) bằng Docker. Mỗi service có database và user riêng.
+2. Build discovery-service và 6 service từ source hiện tại. Bỏ qua test của các service đó, vì script chỉ kiểm tra lúc chạy.
+3. Chạy discovery-service, rồi chạy 6 service với `EUREKA_ENABLED=true` và `EUREKA_URL=http://discovery:<mật khẩu>@localhost:8761/eureka/`, kèm cấu hình log `RedirectingEurekaHttpClient=WARN` ở [mục 7](#7-đăng-ký-một-service-vào-registry).
+4. Chờ tới khi cả 6 app có trạng thái `UP` trong `/eureka/apps`, rồi gọi `/actuator/health` của từng service.
+5. Kiểm tra mọi mật khẩu sinh trong lần chạy không xuất hiện trong log của bất kỳ service nào.
+6. Dừng toàn bộ process và xóa container.
+
+```bash
+# Cần Docker đang chạy, Java 21, curl; cổng 8761 và 8081-8086 phải trống.
+bash services/discovery-service/verification/verify-client-registration.sh
+```
+
+Kết quả ngày 2026-11-08 (Windows, Docker 29.1.3, chạy 2 lần, cả hai PASS, mỗi lần khoảng 3 phút gồm cả build):
+
+```
+SERVICE            INSTANCE                             EUREKA   HEALTH
+auth-service       localhost:auth-service:8081          UP       200
+user-service       localhost:user-service:8082          UP       200
+mentor-service     localhost:mentor-service:8083        UP       200
+booking-service    localhost:booking-service:8084       UP       200
+payment-service    localhost:payment-service:8085       UP       200
+review-service     localhost:review-service:8086        UP       200
+
+[verify] occurrences of the generated passwords in all service logs: 0
+[verify] PASS: all six existing services registered with discovery-service and are UP
+```
+
+api-gateway-service và catalog-service **không** nằm trong danh sách vì chúng chưa có dependency Eureka client trên `develop`. Việc thêm thuộc #59 (gateway chuyển sang `lb://`) và #60 (catalog gộp vào mentor-service). Xem [mục 12](#12-giới-hạn-đã-biết-và-việc-tích-hợp-còn-lại).
+
 ## 11. Postman
 
 File trong `postman/`:
@@ -267,13 +302,17 @@ Lưu ý:
 - Một tài khoản dùng chung cho mọi service và cho người vận hành; chưa có TLS; đổi mật khẩu phải khởi động lại registry và cập nhật `EUREKA_URL` ở mọi service.
 - Đọc `/eureka/apps` có thể trễ tối đa `EUREKA_RESPONSE_CACHE_UPDATE_INTERVAL_MS` (mặc định 30 giây). Client mặc định fetch mỗi 30 giây, nên một service mới có thể mất tới khoảng 1 phút mới được service khác thấy.
 - Eviction mặc định: lease 90 giây + chu kỳ quét 60 giây, và self-preservation có thể giữ instance chết lâu hơn. Local nên đặt `EUREKA_SELF_PRESERVATION=false`.
-- Dockerfile chưa được build thử (không có Docker daemon lúc thực hiện).
+- Dockerfile đã được build và chạy thử ngày 2026-11-07:
+  - thiếu credentials thì container dừng;
+  - health trả 200; `/eureka/apps` trả 401 khi ẩn danh, 200 khi đúng mật khẩu;
+  - process chạy bằng user `app`, không phải root;
+  - mật khẩu không xuất hiện trong log.
 
-**Việc tích hợp còn lại (đề xuất tách thành task riêng, không làm trong #58)**
+**Việc tích hợp còn lại (không làm trong #58)**
 
 | Thành phần | Thay đổi cần làm | Thuộc |
 |---|---|---|
-| auth, user, mentor, booking, payment, review | Chỉ cấu hình: đặt `EUREKA_ENABLED=true`, `EUREKA_URL` có credential; **thêm cấu hình log `RedirectingEurekaHttpClient: WARN`**; trong Docker đặt `eureka.instance.prefer-ip-address=true` hoặc hostname phù hợp. Đã có dependency, không cần sửa code nghiệp vụ | #57 (Compose) / người phụ trách từng service |
+| auth, user, mentor, booking, payment, review | **Đã kiểm chứng đăng ký `UP`** bằng script ở [mục 10](#kiểm-chứng-đăng-ký-các-service-hiện-có-tiêu-chí-58), không cần sửa code. Khi đưa vào Compose chỉ cần đặt `EUREKA_ENABLED=true`, `EUREKA_URL` có credential, `LOGGING_LEVEL_COM_NETFLIX_DISCOVERY_SHARED_TRANSPORT_DECORATOR_REDIRECTINGEUREKAHTTPCLIENT=WARN`, và trong Docker thêm `EUREKA_INSTANCE_PREFER_IP_ADDRESS=true` hoặc hostname phù hợp | #57 (Compose) |
 | api-gateway-service | Thêm `spring-cloud-starter-netflix-eureka-client`, đổi `uri: http://localhost:808x` sang `lb://<service>` | #59 |
 | catalog-service | Chưa có Spring Cloud BOM và eureka-client; theo #60 sẽ được gộp vào mentor-service nên không nên tích hợp riêng | #60 |
 | notification-service, media-service | Tạo project kèm eureka-client và cấu hình như trên | #62, #61 |
