@@ -1,11 +1,11 @@
 # booking-service
 
-Nền tảng Booking Service độc lập, dùng SQL Server và Flyway. Đây là bước khởi tạo service theo ticket #61; nghiệp vụ booking sẽ được triển khai tiếp theo domain đã có ở modular monolith cũ.
+Skeleton độc lập, chỉ có class khởi động Spring Boot. Chưa có API, entity, repository, nghiệp vụ, security configuration, schema SQL hay test case.
 
 - Java 21; Spring Boot 4.1.2; Spring Cloud 2025.1.4; Maven Wrapper riêng.
 - Package `com.mentormatching.booking`; port mặc định `8084`.
-- DBMS **Microsoft SQL Server**, database riêng `mm_booking` và user runtime riêng.
-- JDBC driver và Flyway database module theo SQL Server.
+- DBMS **PostgreSQL**, database riêng `mm_booking` và user runtime riêng.
+- JDBC driver, Flyway module và Testcontainers theo đúng PostgreSQL.
 - Dependency chung và phiên bản: [service initialization](../../docs/service-initialization.md).
 
 ## Build
@@ -26,7 +26,7 @@ Tạo database/user riêng; đặt `DB_PASSWORD` qua shell hoặc IDE. `DB_URL`,
 ./mvnw spring-boot:run
 ```
 
-Flyway bật, JPA chỉ validate. Startup cần SQL Server và credentials hợp lệ. Eureka mặc định tắt; Swagger mặc định tắt. Actuator expose health/info. JWT issuer/audience/public key cấu hình bằng `AUTH_JWT_*`.
+Flyway bật nhưng thư mục migration chưa có SQL; JPA chỉ validate, không tự tạo schema. Startup cần database và credentials hợp lệ. Eureka mặc định tắt đến khi có Discovery. Swagger mặc định tắt; bật API_DOCS_ENABLED khi cần và cấu hình quyền truy cập sau. Actuator expose health/info, ẩn health details. Spring Security vẫn auto-configuration mặc định; chưa có JWT decoder/issuer configuration của dự án.
 
 ## Scheduling
 
