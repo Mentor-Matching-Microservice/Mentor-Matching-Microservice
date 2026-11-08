@@ -2,12 +2,16 @@ package com.mentormatching.payment.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.util.Map;
 import com.mentormatching.payment.config.PaymentProperties;
 import com.mentormatching.payment.domain.Payment;
+import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
+import com.stripe.model.Refund;
 import com.stripe.model.checkout.Session;
 import com.stripe.net.RequestOptions;
+import com.stripe.param.RefundCreateParams;
 import com.stripe.param.checkout.SessionCreateParams;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -31,6 +35,16 @@ public class StripePaymentClient {
         try{return Session.create(params,options("checkout:"+payment.getId()+":"+(payment.getCheckoutAttempt()+1)));}
         catch(StripeException e){throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,"Stripe checkout creation failed",e);}
     }
+    public Refund refund(Payment payment,BigDecimal amount,String idempotencyKey,String reason){
+        ensureKey();
+        long cents=toMinorUnits(amount,payment.getCurrency());
+        RefundCreateParams.Builder builder=RefundCreateParams.builder().setPaymentIntent(payment.getProviderTransactionId()).setAmount(cents);
+        if(reason!=null&&!reason.isBlank())builder.putMetadata("reason",reason.substring(0,Math.min(reason.length(),500)));
+        try{return Refund.create(builder.build(),options("refund:"+idempotencyKey));}
+        catch(StripeException e){throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,"Stripe refund failed",e);}
+    }
+    public Session retrieve(String sessionId){ensureKey();try{return Session.retrieve(sessionId,options(null));}catch(StripeException e){throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,"Stripe session retrieval failed",e);}}
+    public String webhookSecret(){return config.webhookSecret();}
     private RequestOptions options(String key){RequestOptions.RequestOptionsBuilder b=RequestOptions.builder().setApiKey(config.secretKey());if(key!=null)b.setIdempotencyKey(key);return b.build();}
     private void ensureKey(){if(config==null||config.secretKey()==null||config.secretKey().isBlank())throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Stripe is not configured");}
     static long toMinorUnits(BigDecimal amount,String currency){

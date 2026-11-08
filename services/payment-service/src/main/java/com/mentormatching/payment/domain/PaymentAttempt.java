@@ -57,6 +57,10 @@ public class PaymentAttempt {
         this.status = Status.PENDING;
     }
 
+    public void completed() { this.status = Status.COMPLETED; }
+    public void failed(String reason) { this.status = Status.FAILED; this.failureReason = reason; }
+    public void expired() { this.status = Status.EXPIRED; }
+
     public UUID getId() { return id; }
     public UUID getPaymentId() { return paymentId; }
     public int getAttemptNumber() { return attemptNumber; }
