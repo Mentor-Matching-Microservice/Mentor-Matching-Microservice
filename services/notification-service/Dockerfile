@@ -14,6 +14,6 @@ RUN groupadd --system app && useradd --system --gid app --no-create-home app
 WORKDIR /app
 COPY --from=build /workspace/app.jar app.jar
 USER app
-EXPOSE 8088
+EXPOSE 8089
 # MONGODB_URI, AUTH_JWT_* and the JWT public key (mounted file) are supplied at runtime, never baked into the image.
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

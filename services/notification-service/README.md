@@ -16,7 +16,7 @@ Phần payment-service / review-service (MSSQL) của #62 **không** nằm trong
 
 | Mục | Giá trị |
 |---|---|
-| Cổng | `8088` (`SERVER_PORT`) |
+| Cổng | `8089` (`SERVER_PORT`) |
 | Database | MongoDB **replica set**, database `mm_notification` |
 | Stack | Java 21, Spring Boot 4.1.2, Spring Cloud 2025.1.4 |
 | Xác thực | Bearer JWT **RS256** do auth-service ký; chỉ cần public key |
@@ -49,7 +49,7 @@ src/main/java/com/mentormatching/notification
 
 | Biến | Bắt buộc | Mặc định | Ý nghĩa |
 |---|---|---|---|
-| `SERVER_PORT` | | `8088` | Cổng HTTP |
+| `SERVER_PORT` | | `8089` | Cổng HTTP |
 | `MONGODB_URI` | | `mongodb://localhost:27017/mm_notification?replicaSet=rs0` | Chuỗi kết nối, thông tin đăng nhập nằm trong URI |
 | `MONGODB_AUTO_INDEX_CREATION` | | `true` | Tự tạo index từ `@Indexed` |
 | `AUTH_JWT_ISSUER` | | `auth-service` | Phải khớp auth-service |
@@ -93,7 +93,7 @@ Docker (public key được mount lúc chạy, không đóng sẵn vào image):
 
 ```bash
 docker build -t notification-service .
-docker run -p 8088:8088 \
+docker run -p 8089:8089 \
   -v "$PWD/../auth-service/jwt-keys/public.pem:/run/secrets/jwt-public.pem:ro" \
   -e MONGODB_URI="mongodb://host.docker.internal:27017/mm_notification?directConnection=true" \
   -e AUTH_JWT_AUDIENCE=<giống auth-service> \
@@ -175,4 +175,4 @@ npx newman run postman/notification-service.postman_collection.json \
 - **Simple broker nằm trong bộ nhớ:** chỉ phù hợp khi chạy 1 instance. Muốn chạy nhiều instance cần STOMP broker relay (RabbitMQ) hoặc fan-out qua message broker (#57).
 - **Gateway:** route `/api/v1/notifications/**` và `/ws/notifications/**` sẽ được thêm ở #59.
 - **Docker Compose:** MongoDB replica set dùng chung sẽ được dựng ở #57.
-- **Cổng 8088 đang trùng với media-service:** các nhánh media hiện để mặc định `8088`, trong khi issue #61 ghi media dùng `8087`. Cần thống nhất khi dựng Docker Compose (#57).
+- **Cổng 8089, không dùng 8088 như #62 ghi:** trên `develop`, media-service đã dùng `8088` và api-gateway đã route media tới `localhost:8088`. Cổng 8080–8088 đều đã có service, nên notification dùng `8089` để không đụng service của người khác. Khi thêm route `/api/v1/notifications/**` và `/ws/notifications/**` cho gateway (#59), trỏ tới `8089`, hoặc tốt hơn là `lb://notification-service`.

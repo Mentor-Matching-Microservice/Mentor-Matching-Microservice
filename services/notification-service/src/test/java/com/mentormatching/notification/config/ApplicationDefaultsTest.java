@@ -19,7 +19,7 @@ class ApplicationDefaultsTest {
 
     @Test
     void identityMatchesThePlan() {
-        assertThat(value("server.port")).isEqualTo("${SERVER_PORT:8088}");
+        assertThat(value("server.port")).isEqualTo("${SERVER_PORT:8089}");
         assertThat(value("spring.application.name")).isEqualTo("notification-service");
         assertThat(value("spring.mongodb.uri")).contains("/mm_notification").contains("replicaSet=");
     }
