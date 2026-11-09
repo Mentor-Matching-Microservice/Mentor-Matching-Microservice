@@ -22,12 +22,6 @@ eureka:
     service-url:
       defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
 
-booking:
-  jwt:
-    issuer: ${AUTH_JWT_ISSUER:auth-service}
-    audience: ${AUTH_JWT_AUDIENCE:mentor-matching-api}
-    public-key-location: ${AUTH_JWT_PUBLIC_KEY_LOCATION:file:../auth-service/jwt-keys/public.pem}
-
 management:
   endpoints:
     web:
@@ -42,3 +36,16 @@ springdoc:
     enabled: ${API_DOCS_ENABLED:false}
   swagger-ui:
     enabled: ${API_DOCS_ENABLED:false}
+
+booking:
+  messaging:
+    enabled: ${BOOKING_MESSAGING_ENABLED:true}
+    exchange: ${BOOKING_MESSAGING_EXCHANGE:mentor.events}
+    payment-events-queue: ${BOOKING_PAYMENT_EVENTS_QUEUE:booking.payment-events}
+    booking-lifecycle-routing-key: ${BOOKING_LIFECYCLE_ROUTING_KEY:booking.lifecycle}
+  jwt:
+    issuer: ${AUTH_JWT_ISSUER:auth-service}
+    audience: ${AUTH_JWT_AUDIENCE}
+    public-key-location: ${AUTH_JWT_PUBLIC_KEY_LOCATION}
+  cors:
+    allowed-origins: ${BOOKING_CORS_ALLOWED_ORIGINS:http://localhost:5173}

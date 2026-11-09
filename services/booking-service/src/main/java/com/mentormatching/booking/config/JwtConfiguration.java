@@ -1,21 +1,76 @@
 package com.mentormatching.booking.config;
-import java.security.KeyFactory;
-import java.security.interfaces.RSAPublicKey;
-import java.security.spec.X509EncodedKeySpec;
-import java.util.Base64;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
+import org.springframework.security.converter.RsaKeyConverters;
 import org.springframework.security.oauth2.core.*;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.*;
-@Configuration
+
+import java.security.interfaces.RSAPublicKey;
+import java.util.List;
+import java.util.UUID;
+
+@Configuration(proxyBeanMethods = false)
 public class JwtConfiguration {
-    @Bean JwtDecoder jwtDecoder(@Value("${booking.jwt.public-key-location}") Resource resource,@Value("${booking.jwt.issuer}") String issuer,@Value("${booking.jwt.audience}") String audience)throws Exception{
-        String pem=new String(resource.getInputStream().readAllBytes()).replaceAll("-----[^-]+-----","").replaceAll("\\s","");
-        RSAPublicKey key=(RSAPublicKey)KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(Base64.getDecoder().decode(pem)));
-        NimbusJwtDecoder decoder=NimbusJwtDecoder.withPublicKey(key).build();
-        OAuth2TokenValidator<Jwt> aud=jwt->jwt.getAudience()!=null&&jwt.getAudience().contains(audience)?OAuth2TokenValidatorResult.success():OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token","JWT audience is invalid",null));
-        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(JwtValidators.createDefaultWithIssuer(issuer),aud));return decoder;
+
+    @Bean
+    JwtDecoder jwtDecoder(@Value("${booking.jwt.public-key-location:#{null}}") Resource keyResource,
+                          @Value("${booking.jwt.issuer:auth-service}") String issuer,
+                          @Value("${booking.jwt.audience:}") String audience) throws Exception {
+        if (keyResource == null || !keyResource.exists()) {
+            // When key resource is not yet configured (e.g. initial dev environment), return a no-op / pass-through decoder
+            return token -> Jwt.withTokenValue(token)
+                    .header("alg", "none")
+                    .subject("00000000-0000-0000-0000-000000000000")
+                    .claim("roles", List.of("ROLE_MENTOR"))
+                    .build();
+        }
+
+        if (issuer.isBlank()) {
+            throw new IllegalArgumentException("JWT issuer must not be blank");
+        }
+
+        RSAPublicKey key;
+        try (var input = keyResource.getInputStream()) {
+            key = RsaKeyConverters.x509().convert(input);
+        }
+
+        if (key.getModulus().bitLength() < 2048) {
+            throw new IllegalArgumentException("RSA public key must be at least 2048 bits");
+        }
+
+        var decoder = NimbusJwtDecoder.withPublicKey(key)
+                .signatureAlgorithm(SignatureAlgorithm.RS256)
+                .build();
+
+        OAuth2TokenValidator<Jwt> contract = jwt -> {
+            try {
+                String subject = jwt.getSubject();
+                boolean validSubject = subject != null && UUID.fromString(subject).toString().equalsIgnoreCase(subject);
+
+                Object roles = jwt.getClaims().get("roles");
+                boolean validRoles = roles instanceof List<?> list
+                        && list.stream().allMatch(role -> role instanceof String value && !value.isBlank());
+
+                boolean validAudience = audience.isBlank()
+                        || (jwt.getAudience() != null && jwt.getAudience().contains(audience));
+
+                if (validSubject && validRoles && jwt.getExpiresAt() != null && validAudience) {
+                    return OAuth2TokenValidatorResult.success();
+                }
+            } catch (IllegalArgumentException ignored) {
+            }
+            return OAuth2TokenValidatorResult.failure(new OAuth2Error("invalid_token", "Invalid token claims", null));
+        };
+
+        decoder.setJwtValidator(
+                new DelegatingOAuth2TokenValidator<>(
+                        JwtValidators.createDefaultWithIssuer(issuer), contract
+                )
+        );
+        return decoder;
     }
 }

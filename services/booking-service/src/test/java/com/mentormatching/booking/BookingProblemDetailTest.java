@@ -10,10 +10,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.Optional;
 import java.util.UUID;
+import com.mentormatching.booking.config.CorsConfig;
 import com.mentormatching.booking.config.SecurityConfiguration;
 import com.mentormatching.booking.controller.BookingPaymentSummaryController;
 import com.mentormatching.booking.domain.BookingRepository;
 import com.mentormatching.booking.exception.GlobalExceptionHandler;
+import com.mentormatching.booking.exception.ProblemResponses;
+import com.mentormatching.booking.exception.RequestIdFilter;
+import com.mentormatching.booking.security.ProblemAccessDeniedHandler;
+import com.mentormatching.booking.security.ProblemAuthenticationEntryPoint;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -24,7 +29,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(BookingPaymentSummaryController.class)
-@Import({SecurityConfiguration.class, GlobalExceptionHandler.class})
+@Import({SecurityConfiguration.class, GlobalExceptionHandler.class, ProblemResponses.class, RequestIdFilter.class,
+        ProblemAuthenticationEntryPoint.class, ProblemAccessDeniedHandler.class, CorsConfig.class})
 class BookingProblemDetailTest {
     @Autowired
     MockMvc mvc;

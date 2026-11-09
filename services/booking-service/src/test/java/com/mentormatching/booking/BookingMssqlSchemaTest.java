@@ -13,7 +13,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest(properties = "EUREKA_ENABLED=false")
-@Testcontainers
+@Testcontainers(disabledWithoutDocker = true)
 class BookingMssqlSchemaTest {
     @Container
     static final MSSQLServerContainer<?> SQL_SERVER = new MSSQLServerContainer<>("mcr.microsoft.com/mssql/server:2022-latest")
@@ -34,7 +34,7 @@ class BookingMssqlSchemaTest {
     void flywayCreatesBookingAndAvailabilityTablesOnSqlServer() {
         assertThat(tableExists("bookings")).isTrue();
         assertThat(tableExists("mentor_availabilities")).isTrue();
-        assertThat(columnExists("bookings", "payment_hold_expires_at")).isTrue();
+        assertThat(columnExists("bookings", "hold_expires_at")).isTrue();
     }
 
     private boolean tableExists(String name) {
