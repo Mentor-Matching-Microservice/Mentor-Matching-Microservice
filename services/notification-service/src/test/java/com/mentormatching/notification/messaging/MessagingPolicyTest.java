@@ -33,7 +33,7 @@ class MessagingPolicyTest {
         assertThat(defaults.enabled()).isTrue();
         assertThat(defaults.exchange()).isEqualTo("mentor.events");
         assertThat(defaults.queue()).isEqualTo("notification.domain-events");
-        assertThat(defaults.routingKeys()).containsExactly("auth.#", "mentor.#");
+        assertThat(defaults.routingKeys()).containsExactly("auth.#", "mentor.#", "booking.#", "payment.#", "review.#");
         assertThat(defaults.deadLetterExchange()).isEqualTo("notification.domain-events.dlx");
         assertThat(defaults.deadLetterQueue()).isEqualTo("notification.domain-events.dead");
         assertThat(defaults.maxRetries()).isEqualTo(4);

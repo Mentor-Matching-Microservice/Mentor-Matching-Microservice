@@ -33,6 +33,8 @@ public abstract class NotificationIntegrationTestSupport {
     protected static final RabbitMQContainer RABBIT = new RabbitMQContainer("rabbitmq:4.1-alpine");
     protected static final TestJwtKeys KEYS = TestJwtKeys.trusted();
     protected static final JsonMapper JSON = JsonMapper.builder().build();
+    /** booking-service giả cho việc tra người nhận (#81); dùng chung cho mọi lớp *IT. */
+    protected static final FakeBookingService BOOKINGS = new FakeBookingService();
 
     static {
         MONGO.start();
@@ -56,6 +58,10 @@ public abstract class NotificationIntegrationTestSupport {
         registry.add("spring.rabbitmq.port", RABBIT::getAmqpPort);
         registry.add("spring.rabbitmq.username", RABBIT::getAdminUsername);
         registry.add("spring.rabbitmq.password", RABBIT::getAdminPassword);
+        registry.add("notification.booking.base-url", BOOKINGS::baseUrl);
+        // Ít lần thử để test lỗi tạm thời chạy nhanh; giá trị thật mặc định là 4.
+        registry.add("notification.messaging.max-retries", () -> "1");
+        registry.add("notification.delivery.initial-backoff", () -> "10ms");
     }
 
     protected HttpResponse<String> get(String path, String bearerToken) {
