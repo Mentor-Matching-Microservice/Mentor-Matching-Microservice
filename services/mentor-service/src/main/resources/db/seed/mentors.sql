@@ -1,4 +1,4 @@
--- Optional local/demo seed, NOT a Flyway migration. Run after V1.
+-- Optional local/demo seed, NOT a Flyway migration. Run after V6.
 -- First load export_mentor_accounts.sql OUTPUT in the same connection.
 -- Fictional profiles/documents; URLs on example.invalid intentionally do not resolve.
 -- subject_grade_id 1..10 are demo references, not verified catalog mappings.
@@ -23,7 +23,7 @@ CREATE TEMPORARY TABLE tmp_mentor_demo (
     gender VARCHAR(50) NOT NULL,
     experience_years INT NOT NULL,
     meeting_type VARCHAR(50) NOT NULL,
-    approval_status VARCHAR(50) NOT NULL,
+    verification_status VARCHAR(50) NOT NULL,
     price DECIMAL(12,2) NOT NULL,
     subject_grade_id BIGINT NOT NULL
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -36,7 +36,7 @@ INSERT INTO tmp_mentor_demo VALUES
     (21, 'account21@example.com', 'Vũ Minh Khang', 'Tin học', 'FEMALE', 2, 'ONLINE', 'PENDING', 275000, 6),
     (22, 'account22@example.com', 'Đặng Phương Linh', 'Sinh học', 'MALE', 3, 'OFFLINE', 'PENDING', 300000, 7),
     (23, 'account23@example.com', 'Bùi Quang Nam', 'Lịch sử', 'FEMALE', 4, 'HYBRID', 'PENDING', 325000, 8),
-    (24, 'account24@example.com', 'Đỗ Thanh Thảo', 'Địa lý', 'MALE', 5, 'ONLINE', 'DRAFT', 350000, 9),
+    (24, 'account24@example.com', 'Đỗ Thanh Thảo', 'Địa lý', 'MALE', 5, 'ONLINE', 'PENDING', 350000, 9),
     (25, 'account25@example.com', 'Ngô Hải Yến', 'Tiếng Anh giao tiếp', 'FEMALE', 6, 'OFFLINE', 'REJECTED', 375000, 10);
 
 -- Only enrich profiles created by this run. Existing user profiles are untouched.
@@ -112,16 +112,15 @@ WHERE NOT EXISTS (
 DROP TEMPORARY TABLE tmp_mentor_highlight_options;
 DROP TEMPORARY TABLE tmp_personality_options;
 
-INSERT INTO mentor_profiles (user_id, avatar_url, gender, headline, introduction, teaching_style,
-    experience_years, current_position, workplace, education, major, meeting_type, approval_status, approval_note)
-SELECT a.user_id, CONCAT('https://example.invalid/mentors/', d.seq, '/avatar.png'), d.gender,
+INSERT INTO mentor_profiles (user_id, full_name, avatar_url, gender, headline, introduction, teaching_style,
+    experience_years, current_position, workplace, education, major, meeting_type)
+SELECT a.user_id, d.full_name, CONCAT('https://example.invalid/mentors/', d.seq, '/avatar.png'), d.gender,
     CONCAT('Mentor ', d.subject_name, ' — lộ trình học cá nhân hóa'),
     CONCAT('Hồ sơ minh họa của ', d.full_name, '. Đồng hành cùng học viên học ', d.subject_name,
         ', củng cố nền tảng và luyện tập theo mục tiêu.'),
     'Đánh giá đầu vào, giải thích qua ví dụ, luyện tập từng bước và phản hồi sau mỗi buổi.',
     d.experience_years, CONCAT('Gia sư ', d.subject_name), 'Trung tâm giáo dục Demo',
-    'Đại học', d.subject_name, d.meeting_type, d.approval_status,
-    IF(d.approval_status = 'REJECTED', 'Demo: cần bổ sung thông tin hồ sơ.', NULL)
+    'Đại học', d.subject_name, d.meeting_type
 FROM tmp_mentor_demo d JOIN tmp_mentor_accounts a ON a.email = d.email
 JOIN tmp_new_mentors n ON n.user_id = a.user_id;
 
@@ -131,8 +130,8 @@ SELECT p.id, d.full_name,
     CONCAT('https://example.invalid/mentors/', d.seq, '/id-front.png'),
     CONCAT('https://example.invalid/mentors/', d.seq, '/id-back.png'),
     CONCAT('https://example.invalid/mentors/', d.seq, '/selfie.png'),
-    IF(d.approval_status = 'REJECTED', 'REJECTED', 'PENDING'),
-    IF(d.approval_status = 'REJECTED', 'Demo: ảnh giấy tờ chưa rõ.', NULL)
+    d.verification_status,
+    IF(d.verification_status = 'REJECTED', 'Demo: ảnh giấy tờ chưa rõ.', NULL)
 FROM tmp_mentor_demo d JOIN tmp_mentor_accounts a ON a.email = d.email
 JOIN mentor_profiles p ON p.user_id = a.user_id JOIN tmp_new_mentors n ON n.user_id = a.user_id;
 

@@ -5,8 +5,8 @@ spring:
   application:
     name: booking-service
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/mm_booking}
-    username: ${DB_USERNAME:mm_booking}
+    url: ${DB_URL:jdbc:sqlserver://localhost:1433;databaseName=mm_booking;encrypt=true;trustServerCertificate=true}
+    username: ${DB_USERNAME:sa}
     password: ${DB_PASSWORD}
   jpa:
     open-in-view: false
@@ -37,3 +37,16 @@ springdoc:
     enabled: ${API_DOCS_ENABLED:false}
   swagger-ui:
     enabled: ${API_DOCS_ENABLED:false}
+
+booking:
+  messaging:
+    enabled: ${BOOKING_MESSAGING_ENABLED:true}
+    exchange: ${BOOKING_MESSAGING_EXCHANGE:mentor.events}
+    payment-events-queue: ${BOOKING_PAYMENT_EVENTS_QUEUE:booking.payment-events}
+    booking-lifecycle-routing-key: ${BOOKING_LIFECYCLE_ROUTING_KEY:booking.lifecycle}
+  jwt:
+    issuer: ${AUTH_JWT_ISSUER:auth-service}
+    audience: ${AUTH_JWT_AUDIENCE}
+    public-key-location: ${AUTH_JWT_PUBLIC_KEY_LOCATION}
+  cors:
+    allowed-origins: ${BOOKING_CORS_ALLOWED_ORIGINS:http://localhost:5173}
