@@ -164,10 +164,10 @@ class DomainEventConsumptionIT extends NotificationIntegrationTestSupport {
     }
 
     @Test
-    void routingKeysOfOtherDomainsAreNotBoundYet() {
-        // booking/payment/review được bổ sung ở #81; ở #73 queue chỉ nhận auth.# và mentor.#.
+    void unboundRoutingKeysAreNotConsumed() {
+        // Queue chỉ bind auth/mentor/booking/payment/review; sự kiện của domain khác không tới notification.
         UUID learner = UUID.randomUUID();
-        publish("booking.lifecycle", event("AccountRegistered", Map.of("accountId", learner.toString())));
+        publish("media.asset", event("AccountRegistered", Map.of("accountId", learner.toString())));
 
         await().pollDelay(Duration.ofSeconds(1)).atMost(Duration.ofSeconds(5)).until(() -> queueDepth(QUEUE) == 0);
         assertThat(notifications.count()).isZero();
