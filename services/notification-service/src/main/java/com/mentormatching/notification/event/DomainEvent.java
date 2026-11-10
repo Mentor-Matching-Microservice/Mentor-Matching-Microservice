@@ -1,5 +1,6 @@
 package com.mentormatching.notification.event;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -25,8 +26,8 @@ public record DomainEvent(String eventId, String eventType, Instant occurredAt, 
         if (root == null || !root.isObject()) {
             throw new InvalidEventException("Event body must be a JSON object");
         }
-        String eventId = requiredText(root, "eventId");
-        String eventType = requiredText(root, "eventType");
+        String eventId = requiredEnvelopeField(root, "eventId");
+        String eventType = requiredEnvelopeField(root, "eventType");
         if (eventId.length() > MAX_ID_LENGTH || eventType.length() > MAX_ID_LENGTH) {
             throw new InvalidEventException("eventId/eventType is too long");
         }
@@ -57,6 +58,41 @@ public record DomainEvent(String eventId, String eventType, Instant occurredAt, 
         throw new InvalidEventException("Missing required field " + String.join("|", fieldNames));
     }
 
+    /** UUID tuỳ chọn; null nếu không có trường nào trong danh sách. Có nhưng sai định dạng thì là sự kiện lỗi. */
+    public UUID optionalUuid(String... fieldNames) {
+        for (String name : fieldNames) {
+            JsonNode value = payload.get(name);
+            if (value != null && value.isString() && !value.asString().isBlank()) {
+                return requiredUuid(name);
+            }
+        }
+        return null;
+    }
+
+    /** Giá trị bắt buộc dạng chuỗi hoặc số (ví dụ {@code bookingId} là {@code "123"} hoặc {@code 123}). */
+    public String requiredText(String... fieldNames) {
+        for (String name : fieldNames) {
+            String value = optionalText(name);
+            if (value != null) {
+                return value;
+            }
+        }
+        throw new InvalidEventException("Missing required field " + String.join("|", fieldNames));
+    }
+
+    /** Số thập phân tuỳ chọn (ví dụ số tiền); null nếu không có hoặc không phải số. */
+    public BigDecimal optionalDecimal(String fieldName) {
+        JsonNode value = payload.get(fieldName);
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        try {
+            return value.isNumber() ? value.decimalValue() : new BigDecimal(value.asString().strip());
+        } catch (RuntimeException ex) {
+            return null;
+        }
+    }
+
     /** Chuỗi tuỳ chọn, cắt khoảng trắng; null nếu không có hoặc rỗng. */
     public String optionalText(String fieldName) {
         JsonNode value = payload.get(fieldName);
@@ -67,7 +103,7 @@ public record DomainEvent(String eventId, String eventType, Instant occurredAt, 
         return text.isBlank() ? null : text.strip();
     }
 
-    private static String requiredText(JsonNode root, String field) {
+    private static String requiredEnvelopeField(JsonNode root, String field) {
         JsonNode value = root.get(field);
         if (value == null || !value.isString() || value.asString().isBlank()) {
             throw new InvalidEventException("Missing required field " + field);

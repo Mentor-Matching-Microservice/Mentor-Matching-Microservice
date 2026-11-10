@@ -58,5 +58,14 @@ notification:
     # Exchange dùng chung của hệ thống; queue và dead-letter queue là của riêng notification-service.
     exchange: ${NOTIFICATION_EVENTS_EXCHANGE:mentor.events}
     queue: ${NOTIFICATION_EVENTS_QUEUE:notification.domain-events}
-    routing-keys: ${NOTIFICATION_EVENTS_ROUTING_KEYS:auth.#,mentor.#}
+    routing-keys: ${NOTIFICATION_EVENTS_ROUTING_KEYS:auth.#,mentor.#,booking.#,payment.#,review.#}
     max-retries: ${NOTIFICATION_EVENTS_MAX_RETRIES:4}
+  booking:
+    # API nội bộ có sẵn của booking-service, dùng để tra học viên/mentor của một booking (chỉ đọc).
+    base-url: ${BOOKING_SERVICE_URL:http://localhost:8084}
+    connect-timeout: ${BOOKING_CONNECT_TIMEOUT:2s}
+    read-timeout: ${BOOKING_READ_TIMEOUT:3s}
+  delivery:
+    # Retry khi đẩy realtime lỗi tạm thời; mỗi lần thử được ghi vào delivery_attempts.
+    max-attempts: ${NOTIFICATION_DELIVERY_MAX_ATTEMPTS:3}
+    initial-backoff: ${NOTIFICATION_DELIVERY_INITIAL_BACKOFF:200ms}

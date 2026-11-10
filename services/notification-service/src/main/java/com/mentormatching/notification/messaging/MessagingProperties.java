@@ -18,11 +18,15 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record MessagingProperties(Boolean enabled, String exchange, String queue, List<String> routingKeys,
                                   Integer maxRetries) {
 
+    /** auth/mentor (#73) và booking/payment/review (#81) — đúng các routing key các service đang publish. */
+    public static final List<String> DEFAULT_ROUTING_KEYS =
+            List.of("auth.#", "mentor.#", "booking.#", "payment.#", "review.#");
+
     public MessagingProperties {
         enabled = enabled == null || enabled;
         exchange = exchange == null || exchange.isBlank() ? "mentor.events" : exchange;
         queue = queue == null || queue.isBlank() ? "notification.domain-events" : queue;
-        routingKeys = routingKeys == null || routingKeys.isEmpty() ? List.of("auth.#", "mentor.#") : List.copyOf(routingKeys);
+        routingKeys = routingKeys == null || routingKeys.isEmpty() ? DEFAULT_ROUTING_KEYS : List.copyOf(routingKeys);
         maxRetries = maxRetries == null ? 4 : maxRetries;
         if (maxRetries < 0 || maxRetries > 10) {
             throw new IllegalArgumentException("notification.messaging.max-retries must be between 0 and 10");
