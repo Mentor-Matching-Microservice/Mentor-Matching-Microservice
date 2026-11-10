@@ -8,7 +8,7 @@ Service quản lý **hộp thư thông báo** của người dùng (MongoDB `mm_
 |---|---|---|
 | Khởi tạo project, MongoDB replica set + transaction, STOMP broker, Eureka client, RS256 resource server, ProblemDetail, Testcontainers MongoDB | #62 (phần notification) | ✅ |
 | REST API hộp thư, xác thực STOMP ở frame CONNECT, consumer `AccountRegistered` / `MentorApproved` / `MentorRejected`, chống trùng theo `eventId` | #73 | ✅ Nhánh `feat/notification-core-73` |
-| Sự kiện Booking / Payment / Review, `delivery_attempts`, retry | #81 | ⏳ Chưa làm |
+| Sự kiện Booking / Payment / Review, `delivery_attempts`, retry khi đẩy realtime lỗi | #81 | ✅ Nhánh `feat/notification-domain-events-81` |
 
 Phần payment-service / review-service (MSSQL) của #62 do người phụ trách các service đó làm, không nằm ở đây.
 
@@ -32,10 +32,11 @@ src/main/java/com/mentormatching/notification
 ├── config        JwtConfiguration, SecurityConfiguration, CorsConfig, MongoConfiguration,
 │                 WebSocketConfiguration, ClockConfiguration
 ├── controller    NotificationController             # REST /api/v1/notifications
-├── domain        Notification, NotificationType, InboxEvent
+├── domain        Notification, NotificationType, InboxEvent, DeliveryAttempt
 ├── dto           ApiResponse, PageResponse, NotificationResponse
+├── client        BookingParticipantsClient       # tra học viên/mentor qua API nội bộ có sẵn của booking (chỉ gọi)
 ├── event         DomainEvent (envelope), EventNotificationMapper + AccountEventMapper,
-│                 MentorVerificationEventMapper, NotificationDraft, InvalidEventException
+│                 MentorVerificationEventMapper, BookingEventMapper, PaymentEventMapper, ReviewEventMapper
 ├── messaging     MessagingConfiguration (queue, DLQ, retry), MessagingProperties, DomainEventListener
 ├── repository    NotificationRepository, InboxEventRepository
 ├── service       NotificationService (hộp thư), NotificationIngestionService (sự kiện → thông báo),
@@ -84,7 +85,7 @@ Thông báo chỉ được đẩy **sau khi transaction MongoDB commit**. Đẩy
 ## 6. Nhận sự kiện (RabbitMQ)
 
 ```
-mentor.events (topic, dùng chung) --[auth.#, mentor.#]--> notification.domain-events
+mentor.events (topic, dùng chung) --[auth.#, mentor.#, booking.#, payment.#, review.#]--> notification.domain-events
                                                               | sai định dạng / hết số lần thử
                                                               v
                              notification.domain-events.dlx --> notification.domain-events.dead
@@ -123,6 +124,30 @@ Ví dụ:
  "mentorUserId":"5f1c…","mentorId":17,"reason":"Ảnh CCCD bị mờ"}
 ```
 
+### Sự kiện booking / payment / review (#81)
+
+Đúng định dạng các service này đang publish trên `develop`; notification chỉ **nhận**, không sửa service nào.
+
+| eventType | Routing key | Người nhận | Cách biết người nhận |
+|---|---|---|---|
+| `BookingCreated` | `booking.*` | Mentor | ⚠️ booking-service **chưa publish** (mới chỉ ghi log); mapper sẵn sàng |
+| `BookingConfirmed` | `booking.lifecycle` | Học viên + Mentor | Tra qua booking (sự kiện chỉ có `bookingId`) |
+| `BookingRejected` | `booking.lifecycle` | Học viên (kèm lý do) | Tra qua booking |
+| `BookingCancelled` | `booking.lifecycle` | Học viên + Mentor (kèm lý do) | Tra qua booking |
+| `BookingConfirmationFailed` | `booking.lifecycle` | Học viên (kèm lý do, nhắc hoàn tiền) | Tra qua booking |
+| `BookingCompleted` | `booking.*` | Học viên (mời đánh giá) + Mentor | ⚠️ booking-service **chưa publish**; mapper sẵn sàng |
+| `PaymentSucceeded` / `PaymentFailed` / `PaymentRefunded` | `payment.events` | Học viên đã thanh toán | `payerUserId` có sẵn trong sự kiện; số tiền định dạng `500.000 VND` |
+| `ReviewCreated` | `review.events` | Mentor được đánh giá | Sự kiện chỉ có `mentorId` (id hồ sơ), nên tra tài khoản mentor qua booking theo `bookingId` |
+
+- **Tra người nhận:** gọi `GET {BOOKING_SERVICE_URL}/internal/v1/bookings/{bookingId}/payment-context` (API có sẵn của booking) để lấy `studentUserId` và `mentorUserId`. Nếu sau này payload mang sẵn `studentUserId` và `mentorUserId` thì dùng luôn, không gọi nữa.
+  - Booking không tồn tại (404) hoặc dữ liệu sai: sự kiện đi thẳng vào DLQ.
+  - Timeout, 5xx hoặc 429: lỗi tạm thời, retry rồi mới vào DLQ.
+  - `bookingId` không phải số: bị từ chối trước khi gọi.
+- **Chống trùng:** `eventId` được ghi vào inbox; unique index `(sourceEventId, recipientUserId)` bảo đảm phát lại sự kiện cũ không gửi trùng cho cùng một người.
+- **`delivery_attempts`:** mỗi lần đẩy STOMP được ghi lại (`notificationId`, `attempt`, `SENT`/`FAILED`, tên lớp lỗi, thời điểm; tự xoá sau 30 ngày).
+  - Đẩy lỗi tạm thời thì thử lại tối đa `NOTIFICATION_DELIVERY_MAX_ATTEMPTS` lần (mặc định 3), backoff nhân đôi từ 200 ms.
+  - Hết số lần thử thì thông báo vẫn nằm trong hộp thư.
+
 ## 7. Cấu hình (biến môi trường)
 
 | Biến | Bắt buộc | Mặc định | Ý nghĩa |
@@ -138,7 +163,11 @@ Ví dụ:
 | `NOTIFICATION_MESSAGING_ENABLED` | | `true` | `false` để chạy không cần RabbitMQ (không tạo consumer) |
 | `NOTIFICATION_EVENTS_EXCHANGE` | | `mentor.events` | Exchange dùng chung |
 | `NOTIFICATION_EVENTS_QUEUE` | | `notification.domain-events` | Queue riêng; DLX/DLQ là `<queue>.dlx` / `<queue>.dead` |
-| `NOTIFICATION_EVENTS_ROUTING_KEYS` | | `auth.#,mentor.#` | Pattern được bind vào queue |
+| `NOTIFICATION_EVENTS_ROUTING_KEYS` | | `auth.#,mentor.#,booking.#,payment.#,review.#` | Pattern được bind vào queue |
+| `BOOKING_SERVICE_URL` | | `http://localhost:8084` | API nội bộ của booking để tra người nhận |
+| `BOOKING_CONNECT_TIMEOUT` / `BOOKING_READ_TIMEOUT` | | `2s` / `3s` | Timeout khi gọi booking |
+| `NOTIFICATION_DELIVERY_MAX_ATTEMPTS` | | `3` | 1–5 lần đẩy realtime cho mỗi thông báo |
+| `NOTIFICATION_DELIVERY_INITIAL_BACKOFF` | | `200ms` | Chờ trước lần thử thứ 2, nhân đôi sau mỗi lần |
 | `NOTIFICATION_EVENTS_MAX_RETRIES` | | `4` | 0–10 |
 | `NOTIFICATION_CORS_ALLOWED_ORIGINS` | | `http://localhost:5173` | Origin được phép CORS **và** handshake WebSocket |
 | `EUREKA_ENABLED` / `EUREKA_URL` | | `false` / `http://localhost:8761/eureka/` | discovery-service có bảo mật: `http://<user>:<password>@<host>:8761/eureka/` |
@@ -214,6 +243,10 @@ docker run -p 8089:8089 \
 | IT | `StompRealtimeIT` | 7 | CONNECT không/sai token bị từ chối; chỉ người nhận đúng nhận tin; SUBSCRIBE đích lạ hoặc SEND → bị ngắt; origin lạ → 403 |
 | IT | `SecurityAndProblemContractIT` | 20 | Hợp đồng lỗi 400/401/403/404/405/500, 7 loại token sai, CORS, actuator, API docs |
 | IT | `MongoReplicaSetIT` | 5 | Database `mm_notification`, health Mongo, transaction commit/rollback |
+| Unit | `DomainEventMappers81Test` | 7 | Người nhận của từng sự kiện booking đúng #81, payment cho người trả, review cho mentor, định dạng tiền, lý do bị cắt |
+| Unit | `BookingParticipantsClientTest` | 6 | Đọc đúng response booking; 404 → lỗi vĩnh viễn; 5xx/429/không kết nối → lỗi tạm thời; chặn `bookingId` không phải số |
+| Unit | `RealtimeNotificationPublisherTest` | 5 | Thử lại có giới hạn, ghi từng lần thử, lỗi ghi lịch sử không làm hỏng việc đẩy |
+| IT | `BookingPaymentReviewEventsIT` | 7 | RabbitMQ thật + booking-service giả: đúng người nhận và nội dung cho booking/payment/review, phát lại không trùng, `delivery_attempts`, booking 404 → DLQ không retry, booking 503 → retry rồi DLQ |
 
 `ContractProbeController` chỉ có trong `src/test` và không có trong jar.
 
@@ -238,4 +271,6 @@ STOMP không kiểm tra được bằng collection runner. Phần này được 
 - **Token hết hạn giữa chừng:** phiên WebSocket đã CONNECT vẫn mở sau khi token hết hạn. Client cũ tự kết nối lại khi token mới được cấp.
 - **Gateway:** route `/api/v1/notifications/**` và `/ws/notifications/**` thuộc #59 (service của người khác).
 - **Cổng 8089, không dùng 8088 như #62 ghi:** trên `develop`, media-service đã dùng `8088` và api-gateway đã route media tới `localhost:8088`. Cổng 8080–8088 đều đã có service. Gateway nên trỏ tới `lb://notification-service` hoặc `8089`.
-- **#81:** sẽ bind thêm `booking.lifecycle`, `payment.events`, `review.events` và thêm mapper cho các sự kiện đó.
+- **`BookingCreated` và `BookingCompleted`:** booking-service hiện chỉ ghi log, chưa đưa lên RabbitMQ. Đây là việc phía booking. notification đã có sẵn mapper.
+- **API nội bộ của booking đang `permitAll`:** notification gọi không cần token. Nếu booking bảo vệ `/internal/**` sau này, cần bổ sung token service-to-service.
+- **Lệch kiểu `bookingId` giữa payment (UUID) và booking (Long) trên `develop`:** notification không dùng `bookingId` của payment để tra cứu (người nhận lấy thẳng từ `payerUserId`), nên không bị ảnh hưởng.
