@@ -5,7 +5,7 @@ Eureka service registry của Mentor Matching (issue #58). Các service đăng k
 | Trạng thái | Nội dung |
 |---|---|
 | ✅ **Đã triển khai** | Eureka Server độc lập (standalone), bảo vệ bằng HTTP Basic, health/readiness probe công khai, dashboard tắt mặc định, cấu hình qua biến môi trường, Dockerfile, unit test + integration test (gồm một Eureka client thật), Postman collection |
-| ✅ **Đã kiểm chứng đăng ký client** | 6 service đang có Eureka client (auth, user, mentor, booking, payment, review) đăng ký và hiện `UP` khi bật bằng biến môi trường. Không sửa code của các service này. Xem [Kiểm chứng đăng ký các service hiện có](#kiểm-chứng-đăng-ký-các-service-hiện-có-tiêu-chí-58) |
+| ✅ **Đã kiểm chứng đăng ký client** | Mọi service khởi động được trên `develop` (auth, user, mentor, booking, review, media) đăng ký và hiện `UP` khi bật bằng biến môi trường. payment-service hiện không khởi động được vì lỗi schema riêng của nó. Không sửa code của các service này. Xem [Kiểm chứng đăng ký các service hiện có](#kiểm-chứng-đăng-ký-các-service-hiện-có-tiêu-chí-58) |
 | ⏳ **Việc của issue khác** | Gateway chưa dùng `lb://` (#59); catalog-service chưa có Eureka client và sẽ gộp vào mentor-service (#60); chưa có Docker Compose (#57). Xem [Việc tích hợp còn lại](#12-giới-hạn-đã-biết-và-việc-tích-hợp-còn-lại) |
 
 ---
@@ -241,35 +241,50 @@ Kết quả lần chạy khi hoàn thành #58 (Windows, JDK 21.0.10): `./mvnw cl
 
 ### Kiểm chứng đăng ký các service hiện có (tiêu chí #58)
 
-Script [verification/verify-client-registration.sh](verification/verify-client-registration.sh) chạy thật discovery-service cùng 6 service đang có Eureka client, **không sửa source** của các service này. Client được bật hoàn toàn bằng biến môi trường có sẵn (`EUREKA_ENABLED`, `EUREKA_URL`).
+Script [verification/verify-client-registration.sh](verification/verify-client-registration.sh) chạy thật discovery-service cùng **mọi service đang có Eureka client trên `develop`**, **không sửa source** của các service đó. Client được bật hoàn toàn bằng biến môi trường có sẵn (`EUREKA_ENABLED`, `EUREKA_URL`, `DB_*`, `SPRING_RABBITMQ_*`, `MONGODB_URI`).
 
 Script làm các bước sau:
-1. Dựng MySQL 8.4 cho auth, user, mentor và PostgreSQL 16 cho booking, payment, review (đúng như trên `develop`) bằng Docker. Mỗi service có database và user riêng.
-2. Build discovery-service và 6 service từ source hiện tại. Bỏ qua test của các service đó, vì script chỉ kiểm tra lúc chạy.
-3. Chạy discovery-service, rồi chạy 6 service với `EUREKA_ENABLED=true` và `EUREKA_URL=http://discovery:<mật khẩu>@localhost:8761/eureka/`, kèm cấu hình log `RedirectingEurekaHttpClient=WARN` ở [mục 7](#7-đăng-ký-một-service-vào-registry).
-4. Chờ tới khi cả 6 app có trạng thái `UP` trong `/eureka/apps`, rồi gọi `/actuator/health` của từng service.
+1. Dựng hạ tầng bằng Docker, đúng như trên `develop`. Mỗi service có database riêng; mọi mật khẩu sinh ngẫu nhiên cho từng lần chạy.
+   - MySQL 8.4 cho auth, user, mentor.
+   - SQL Server 2022 cùng RabbitMQ cho booking, payment, review.
+   - MongoDB replica set cho media.
+2. Build discovery-service và 7 service từ source hiện tại, bỏ qua test của các service đó. Đặt `SKIP_BUILD=1` để dùng lại jar đã build.
+3. Chạy discovery-service, rồi chạy 7 service với `EUREKA_ENABLED=true` và `EUREKA_URL=http://discovery:<mật khẩu>@localhost:8761/eureka/`, kèm cấu hình log `RedirectingEurekaHttpClient=WARN` ở [mục 7](#7-đăng-ký-một-service-vào-registry).
+4. Chờ tới khi mỗi service hoặc đã `UP` trong `/eureka/apps`, hoặc đã tự dừng vì không khởi động được. Service tự dừng được báo riêng kèm lỗi đầu tiên, vì đó không phải lỗi đăng ký.
 5. Kiểm tra mọi mật khẩu sinh trong lần chạy không xuất hiện trong log của bất kỳ service nào.
-6. Dừng toàn bộ process và xóa container.
+6. Dừng toàn bộ process và xoá container.
+
+Exit code: `0` khi tất cả đều UP; `3` khi tất cả service khởi động được đều UP nhưng có service tự lỗi khi khởi động; `1` khi có service chạy mà không đăng ký được.
 
 ```bash
-# Cần Docker đang chạy, Java 21, curl; cổng 8761 và 8081-8086 phải trống.
+# Cần Docker đang chạy, Java 21, curl; cổng 8761, 8081-8086 và 8088 phải trống.
 bash services/discovery-service/verification/verify-client-registration.sh
+# Tuỳ chọn: SKIP_BUILD=1 (dùng jar đã build), VERIFY_WORK_DIR=<thư mục> (giữ lại log của từng service)
 ```
 
-Kết quả ngày 2026-11-08 (Windows, Docker 29.1.3, chạy 2 lần, cả hai PASS, mỗi lần khoảng 3 phút gồm cả build):
+Kết quả ngày 2026-11-10, trên `develop` (`1b485ed`) merge với nhánh này (Windows, Docker 29.1.3):
 
 ```
-SERVICE            INSTANCE                             EUREKA   HEALTH
+SERVICE            INSTANCE                             EUREKA   HEALTH / NOTE
 auth-service       localhost:auth-service:8081          UP       200
 user-service       localhost:user-service:8082          UP       200
 mentor-service     localhost:mentor-service:8083        UP       200
 booking-service    localhost:booking-service:8084       UP       200
-payment-service    localhost:payment-service:8085       UP       200
+payment-service    -                                    -        DID NOT START: Schema validation: missing table [stripe_webhook_events]
 review-service     localhost:review-service:8086        UP       200
+media-service      localhost:media-service:8088         UP       200
 
 [verify] occurrences of the generated passwords in all service logs: 0
-[verify] PASS: all six existing services registered with discovery-service and are UP
+[verify] PARTIAL: 6/7 registered and UP; did not start on their own: payment-service
 ```
+
+- **6/7 service đăng ký và `UP`.**
+- **payment-service trên `develop` không khởi động được, dù có bật Eureka hay không:**
+  - entity `StripeWebhookEvent` dùng bảng `stripe_webhook_events`, nhưng không migration Flyway nào tạo bảng này;
+  - Hibernate `ddl-auto: validate` vì vậy dừng ứng dụng;
+  - đây là lỗi của payment-service, cần người phụ trách payment sửa;
+  - lần chạy ngày 2026-11-08 (payment còn dùng PostgreSQL, chưa có bảng này) thì payment đăng ký `UP` bình thường.
+- **Không dùng phiên bản cũ của script:** phiên bản trước (PostgreSQL cho booking/payment/review) không còn đúng với `develop` hiện tại.
 
 api-gateway-service và catalog-service **không** nằm trong danh sách vì chúng chưa có dependency Eureka client trên `develop`. Việc thêm thuộc #59 (gateway chuyển sang `lb://`) và #60 (catalog gộp vào mentor-service). Xem [mục 12](#12-giới-hạn-đã-biết-và-việc-tích-hợp-còn-lại).
 
@@ -312,7 +327,7 @@ Lưu ý:
 
 | Thành phần | Thay đổi cần làm | Thuộc |
 |---|---|---|
-| auth, user, mentor, booking, payment, review | **Đã kiểm chứng đăng ký `UP`** bằng script ở [mục 10](#kiểm-chứng-đăng-ký-các-service-hiện-có-tiêu-chí-58), không cần sửa code. Khi đưa vào Compose chỉ cần đặt `EUREKA_ENABLED=true`, `EUREKA_URL` có credential, `LOGGING_LEVEL_COM_NETFLIX_DISCOVERY_SHARED_TRANSPORT_DECORATOR_REDIRECTINGEUREKAHTTPCLIENT=WARN`, và trong Docker thêm `EUREKA_INSTANCE_PREFER_IP_ADDRESS=true` hoặc hostname phù hợp | #57 (Compose) |
+| auth, user, mentor, booking, review, media (payment: xem mục 10) | **Đã kiểm chứng đăng ký `UP`** bằng script ở [mục 10](#kiểm-chứng-đăng-ký-các-service-hiện-có-tiêu-chí-58), không cần sửa code. Khi đưa vào Compose chỉ cần đặt `EUREKA_ENABLED=true`, `EUREKA_URL` có credential, `LOGGING_LEVEL_COM_NETFLIX_DISCOVERY_SHARED_TRANSPORT_DECORATOR_REDIRECTINGEUREKAHTTPCLIENT=WARN`, và trong Docker thêm `EUREKA_INSTANCE_PREFER_IP_ADDRESS=true` hoặc hostname phù hợp | #57 (Compose) |
 | api-gateway-service | Thêm `spring-cloud-starter-netflix-eureka-client`, đổi `uri: http://localhost:808x` sang `lb://<service>` | #59 |
 | catalog-service | Chưa có Spring Cloud BOM và eureka-client; theo #60 sẽ được gộp vào mentor-service nên không nên tích hợp riêng | #60 |
 | notification-service, media-service | Tạo project kèm eureka-client và cấu hình như trên | #62, #61 |
