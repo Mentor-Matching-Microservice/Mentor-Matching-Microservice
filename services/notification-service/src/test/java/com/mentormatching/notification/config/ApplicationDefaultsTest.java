@@ -45,6 +45,14 @@ class ApplicationDefaultsTest {
         assertThat(value("springdoc.api-docs.enabled")).isEqualTo("${API_DOCS_ENABLED:false}");
     }
 
+    @Test
+    void messagingUsesTheSharedExchangeAndItsOwnQueue() {
+        assertThat(value("notification.messaging.enabled")).isEqualTo("${NOTIFICATION_MESSAGING_ENABLED:true}");
+        assertThat(value("notification.messaging.exchange")).isEqualTo("${NOTIFICATION_EVENTS_EXCHANGE:mentor.events}");
+        assertThat(value("notification.messaging.queue")).isEqualTo("${NOTIFICATION_EVENTS_QUEUE:notification.domain-events}");
+        assertThat(value("spring.rabbitmq.password")).isEqualTo("${RABBITMQ_PASSWORD:guest}");
+    }
+
     private String value(String key) {
         Object value = yaml.getProperty(key);
         return value == null ? null : value.toString();

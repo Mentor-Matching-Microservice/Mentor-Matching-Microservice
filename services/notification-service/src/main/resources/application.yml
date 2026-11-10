@@ -10,6 +10,12 @@ spring:
   data:
     mongodb:
       auto-index-creation: ${MONGODB_AUTO_INDEX_CREATION:true}
+  rabbitmq:
+    # Cùng tên biến môi trường với payment-service.
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
 
 eureka:
   client:
@@ -47,3 +53,10 @@ notification:
     public-key-location: ${AUTH_JWT_PUBLIC_KEY_LOCATION:}
   cors:
     allowed-origins: ${NOTIFICATION_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  messaging:
+    enabled: ${NOTIFICATION_MESSAGING_ENABLED:true}
+    # Exchange dùng chung của hệ thống; queue và dead-letter queue là của riêng notification-service.
+    exchange: ${NOTIFICATION_EVENTS_EXCHANGE:mentor.events}
+    queue: ${NOTIFICATION_EVENTS_QUEUE:notification.domain-events}
+    routing-keys: ${NOTIFICATION_EVENTS_ROUTING_KEYS:auth.#,mentor.#}
+    max-retries: ${NOTIFICATION_EVENTS_MAX_RETRIES:4}

@@ -13,12 +13,13 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.mongodb.MongoDBContainer;
+import org.testcontainers.rabbitmq.RabbitMQContainer;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Chạy toàn bộ ứng dụng trên cổng ngẫu nhiên với MongoDB thật (Testcontainers, single-node
- * replica set như môi trường dev) và public key JWT sinh riêng cho lần chạy.
+ * replica set như môi trường dev), RabbitMQ thật và public key JWT sinh riêng cho lần chạy.
  * Container được khởi động một lần và dùng chung cho mọi lớp *IT; cần Docker đang chạy.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -29,11 +30,13 @@ public abstract class NotificationIntegrationTestSupport {
 
     // Testcontainers 2.x không còn mặc định chạy replica set: bật tường minh để có transaction.
     protected static final MongoDBContainer MONGO = new MongoDBContainer("mongo:8.0").withReplicaSet();
+    protected static final RabbitMQContainer RABBIT = new RabbitMQContainer("rabbitmq:4.1-alpine");
     protected static final TestJwtKeys KEYS = TestJwtKeys.trusted();
     protected static final JsonMapper JSON = JsonMapper.builder().build();
 
     static {
         MONGO.start();
+        RABBIT.start();
     }
 
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
@@ -49,6 +52,10 @@ public abstract class NotificationIntegrationTestSupport {
         registry.add("notification.jwt.issuer", () -> TestJwtKeys.ISSUER);
         registry.add("notification.jwt.audience", () -> TestJwtKeys.AUDIENCE);
         registry.add("notification.cors.allowed-origins", () -> ALLOWED_ORIGIN);
+        registry.add("spring.rabbitmq.host", RABBIT::getHost);
+        registry.add("spring.rabbitmq.port", RABBIT::getAmqpPort);
+        registry.add("spring.rabbitmq.username", RABBIT::getAdminUsername);
+        registry.add("spring.rabbitmq.password", RABBIT::getAdminPassword);
     }
 
     protected HttpResponse<String> get(String path, String bearerToken) {

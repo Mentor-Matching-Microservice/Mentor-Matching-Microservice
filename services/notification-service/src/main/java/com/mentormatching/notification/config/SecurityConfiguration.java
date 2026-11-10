@@ -20,9 +20,9 @@ import org.springframework.web.cors.CorsConfigurationSource;
  * Bảo vệ HTTP API bằng Bearer JWT (RS256), không session, không HTTP Basic/form login.
  * Chỉ health probe là công khai; mọi request khác phải có token hợp lệ.
  *
- * <p>Handshake STOMP {@code /ws/notifications} hiện cũng đi qua filter này (cần Bearer JWT).
- * Ở #73, handshake sẽ được cho qua tại đây và việc xác thực chuyển sang channel interceptor
- * kiểm tra JWT ở frame CONNECT.
+ * <p>Handshake STOMP {@code /ws/notifications} được cho qua ở tầng HTTP (trình duyệt không gửi được
+ * header Authorization khi mở WebSocket); origin vẫn được kiểm tra ở endpoint và JWT được kiểm tra ở frame
+ * CONNECT bởi {@code StompAuthChannelInterceptor} với cùng JwtDecoder/converter như HTTP.
  */
 @Configuration
 @EnableMethodSecurity
@@ -37,17 +37,25 @@ public class SecurityConfiguration {
         return converter;
     }
 
+    /** Một converter JWT → Authentication dùng chung cho HTTP và STOMP CONNECT (tên = sub, roles → ROLE_*). */
+    @Bean
+    JwtAuthenticationConverter jwtAuthenticationConverter(JwtGrantedAuthoritiesConverter authorities) {
+        var authentication = new JwtAuthenticationConverter();
+        authentication.setJwtGrantedAuthoritiesConverter(authorities);
+        return authentication;
+    }
+
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, ProblemAuthenticationEntryPoint entryPoint,
                                             ProblemAccessDeniedHandler deniedHandler,
                                             CorsConfigurationSource corsConfigurationSource,
-                                            JwtGrantedAuthoritiesConverter authorities) throws Exception {
-        var authentication = new JwtAuthenticationConverter();
-        authentication.setJwtGrantedAuthoritiesConverter(authorities);
+                                            JwtAuthenticationConverter authentication) throws Exception {
         return http
                 .authorizeHttpRequests(auth -> auth
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
+                        // Handshake WebSocket: xác thực ở frame STOMP CONNECT, không ở HTTP.
+                        .requestMatchers(HttpMethod.GET, WebSocketConfiguration.ENDPOINT).permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint(entryPoint)

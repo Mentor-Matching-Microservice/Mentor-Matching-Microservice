@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "4f0d8a3e-6b2c-4c1e-9a57-2d7e3b9c8f14",
-    "name": "notification-service (foundation #62)",
-    "description": "Kiểm tra nền tảng notification-service: health công khai, bảo mật Bearer JWT RS256, hợp đồng lỗi ProblemDetail và handshake STOMP. API thông báo (/api/v1/notifications) được bổ sung ở #73.\n\nBiến môi trường cần có: baseUrl, accessToken (access token hợp lệ do auth-service cấp, ví dụ lấy từ POST /api/v1/auth/login).",
+    "name": "notification-service",
+    "description": "notification-service: health công khai, bảo mật Bearer JWT RS256, hợp đồng lỗi ProblemDetail (#62) và hộp thư thông báo REST (#73).\n\nBiến môi trường: baseUrl, accessToken (access token hợp lệ do auth-service cấp, ví dụ từ POST /api/v1/auth/login). Thư mục 4 cần hộp thư của người dùng có ít nhất 1 thông báo (ví dụ sau khi đăng ký tài khoản, hoặc chèn thử vào MongoDB). STOMP (/ws/notifications) không kiểm tra được bằng Postman collection runner; xem README.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -18,7 +18,7 @@
           ] } }]
         },
         {
-          "name": "Readiness (includes MongoDB)",
+          "name": "Readiness",
           "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{baseUrl}}/actuator/health/readiness" },
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "pm.test('status 200 UP', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().status).to.eql('UP'); });"
@@ -54,34 +54,17 @@
           "name": "Malformed token → 401",
           "request": {
             "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "not.a.jwt", "type": "string" }] },
-            "method": "GET", "url": "{{baseUrl}}/api/v1/notifications"
+            "method": "GET", "url": "{{baseUrl}}/api/v1/notifications/unread-count"
           },
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "pm.test('status 401', () => pm.response.to.have.status(401));",
             "pm.test('code AUTHENTICATION_REQUIRED', () => pm.expect(pm.response.json().code).to.eql('AUTHENTICATION_REQUIRED'));"
           ] } }]
-        },
-        {
-          "name": "WebSocket handshake without token → 401",
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "GET",
-            "header": [
-              { "key": "Connection", "value": "Upgrade" },
-              { "key": "Upgrade", "value": "websocket" },
-              { "key": "Sec-WebSocket-Version", "value": "13" },
-              { "key": "Sec-WebSocket-Key", "value": "dGhlIHNhbXBsZSBub25jZQ==" }
-            ],
-            "url": "{{baseUrl}}/ws/notifications"
-          },
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-            "pm.test('status 401', () => pm.response.to.have.status(401));"
-          ] } }]
         }
       ]
     },
     {
-      "name": "3. Authenticated (Bearer accessToken)",
+      "name": "3. Management surface (Bearer accessToken)",
       "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
       "item": [
         {
@@ -89,20 +72,6 @@
           "request": { "method": "GET", "url": "{{baseUrl}}/actuator/info" },
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "pm.test('status 200 (token accepted)', () => pm.response.to.have.status(200));"
-          ] } }]
-        },
-        {
-          "name": "Unknown route → 404 ProblemDetail",
-          "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/does-not-exist" },
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
-            "pm.test('status 404', () => pm.response.to.have.status(404));",
-            "pm.test('ProblemDetail RESOURCE_NOT_FOUND', () => {",
-            "  const b = pm.response.json();",
-            "  pm.expect(b.code).to.eql('RESOURCE_NOT_FOUND');",
-            "  pm.expect(b.type).to.eql('urn:mentor-matching:problem:resource-not-found');",
-            "  pm.expect(b.instance).to.eql('/api/v1/does-not-exist');",
-            "  pm.expect(b.requestId).to.eql(pm.response.headers.get('X-Request-ID'));",
-            "});"
           ] } }]
         },
         {
@@ -120,6 +89,104 @@
           ] } }]
         }
       ]
+    },
+    {
+      "name": "4. Notification inbox #73 (Bearer accessToken)",
+      "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+      "item": [
+        {
+          "name": "List my notifications",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/notifications?page=1&size=10" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 200', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('ApiResponse + PageResponse shape', () => {",
+            "  pm.expect(body.success).to.eql(true);",
+            "  pm.expect(body.data.page).to.eql(1);",
+            "  pm.expect(body.data.pageSize).to.eql(10);",
+            "  pm.expect(body.data).to.have.property('totalItems');",
+            "  pm.expect(body.data.data).to.be.an('array');",
+            "});",
+            "pm.test('inbox has at least one notification (seed data)', () => pm.expect(body.data.data.length).to.be.above(0));",
+            "pm.test('items use the legacy field names', () => {",
+            "  const n = body.data.data[0];",
+            "  ['id','userId','type','title','message','isRead','createdAt'].forEach(k => pm.expect(n).to.have.property(k));",
+            "});",
+            "if (body.data.data.length > 0) { pm.collectionVariables.set('notificationId', body.data.data[0].id); }"
+          ] } }]
+        },
+        {
+          "name": "Unread count",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/notifications/unread-count" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 200', () => pm.response.to.have.status(200));",
+            "pm.test('data is a number', () => pm.expect(pm.response.json().data).to.be.a('number'));"
+          ] } }]
+        },
+        {
+          "name": "Mark one as read",
+          "request": { "method": "PATCH", "url": "{{baseUrl}}/api/v1/notifications/{{notificationId}}/read" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 200', () => pm.response.to.have.status(200));",
+            "pm.test('isRead true with readAt', () => { const n = pm.response.json().data; pm.expect(n.isRead).to.eql(true); pm.expect(n.readAt).to.be.a('string'); });"
+          ] } }]
+        },
+        {
+          "name": "Mark all as read",
+          "request": { "method": "POST", "url": "{{baseUrl}}/api/v1/notifications/mark-all-read" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 200', () => pm.response.to.have.status(200));",
+            "pm.test('data = number updated', () => pm.expect(pm.response.json().data).to.be.a('number'));"
+          ] } }]
+        },
+        {
+          "name": "Unread count is now 0",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/notifications/unread-count" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('0 unread', () => pm.expect(pm.response.json().data).to.eql(0));"
+          ] } }]
+        },
+        {
+          "name": "Unknown id → 404",
+          "request": { "method": "PATCH", "url": "{{baseUrl}}/api/v1/notifications/{{$guid}}/read" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 404', () => pm.response.to.have.status(404));",
+            "pm.test('code NOTIFICATION_NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('NOTIFICATION_NOT_FOUND'));"
+          ] } }]
+        },
+        {
+          "name": "Malformed id → 400",
+          "request": { "method": "PATCH", "url": "{{baseUrl}}/api/v1/notifications/not-a-uuid/read" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 400', () => pm.response.to.have.status(400));"
+          ] } }]
+        },
+        {
+          "name": "Page size over 100 → 400",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/notifications?size=101" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 400', () => pm.response.to.have.status(400));",
+            "pm.test('code VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));"
+          ] } }]
+        },
+        {
+          "name": "Delete one",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/v1/notifications/{{notificationId}}" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 200', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Delete again → 404",
+          "request": { "method": "DELETE", "url": "{{baseUrl}}/api/v1/notifications/{{notificationId}}" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 404', () => pm.response.to.have.status(404));"
+          ] } }]
+        }
+      ]
     }
+  ],
+  "variable": [
+    { "key": "notificationId", "value": "" }
   ]
 }
