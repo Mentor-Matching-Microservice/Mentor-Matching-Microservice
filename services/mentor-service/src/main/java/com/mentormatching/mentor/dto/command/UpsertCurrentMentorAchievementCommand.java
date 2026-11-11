@@ -18,10 +18,15 @@ public record UpsertCurrentMentorAchievementCommand(
         @NotNull AchievementType achievementType,
         @Size(max = 255) String issuer,
         LocalDate achievedAt,
-        String proofUrl) {
+        String proofUrl,
+        Long proofMediaId) {
 
     public UpsertCurrentMentorAchievementCommand {
         title = title == null ? null : title.trim();
+    }
+
+    public UpsertCurrentMentorAchievementCommand withId(Long newId) {
+        return new UpsertCurrentMentorAchievementCommand(newId, title, description, achievementType, issuer, achievedAt, proofUrl, proofMediaId);
     }
 
     @Override

@@ -42,4 +42,13 @@ public interface MentorProfileRepository extends JpaRepository<MentorProfile, Lo
             """)
     int applyAccountStatus(@Param("userId") UUID userId, @Param("status") AccountStatus status,
                            @Param("version") long version);
+
+    @Modifying
+    @Query("""
+            update MentorProfile p
+            set p.fullName = :fullName, p.avatarUrl = coalesce(:avatarUrl, p.avatarUrl), p.avatarMediaId = coalesce(:avatarMediaId, p.avatarMediaId)
+            where p.userId = :userId
+            """)
+    int applyUserProfile(@Param("userId") UUID userId, @Param("fullName") String fullName,
+                         @Param("avatarUrl") String avatarUrl, @Param("avatarMediaId") Long avatarMediaId);
 }

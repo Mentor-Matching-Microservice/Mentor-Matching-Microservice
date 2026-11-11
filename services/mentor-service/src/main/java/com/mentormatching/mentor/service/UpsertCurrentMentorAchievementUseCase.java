@@ -73,6 +73,7 @@ public class UpsertCurrentMentorAchievementUseCase {
         achievement.setIssuer(command.issuer());
         achievement.setAchievedAt(command.achievedAt());
         achievement.setProofUrl(command.proofUrl());
+        achievement.setProofMediaId(command.proofMediaId());
 
         var saved = mentorAchievementRepository.save(achievement);
         return MentorAchievementDetails.builder()
@@ -83,6 +84,7 @@ public class UpsertCurrentMentorAchievementUseCase {
                 .issuer(saved.getIssuer())
                 .achievedAt(saved.getAchievedAt())
                 .proofUrl(saved.getProofUrl())
+                .proofMediaId(saved.getProofMediaId())
                 .verified(saved.getVerified())
                 .build();
     }
@@ -93,6 +95,7 @@ public class UpsertCurrentMentorAchievementUseCase {
                 || !Objects.equals(achievement.getAchievementType(), command.achievementType())
                 || !Objects.equals(achievement.getIssuer(), command.issuer())
                 || !Objects.equals(achievement.getAchievedAt(), command.achievedAt())
-                || !Objects.equals(achievement.getProofUrl(), command.proofUrl());
+                || !Objects.equals(achievement.getProofUrl(), command.proofUrl())
+                || !Objects.equals(achievement.getProofMediaId(), command.proofMediaId());
     }
 }
