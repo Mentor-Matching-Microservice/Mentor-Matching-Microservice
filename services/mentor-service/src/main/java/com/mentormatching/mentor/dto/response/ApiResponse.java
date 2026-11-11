@@ -20,4 +20,18 @@ public record ApiResponse<T>(
                 .data(data)
                 .build();
     }
+
+    public static <T> ApiResponse<T> ok(T data, String message) {
+        return success(data, message);
+    }
+
+    public static <T> ApiResponse<T> created(T data, String message) {
+        return ApiResponse.<T>builder()
+                .status(201)
+                .code("CREATED")
+                .success(true)
+                .message(message)
+                .data(data)
+                .build();
+    }
 }
