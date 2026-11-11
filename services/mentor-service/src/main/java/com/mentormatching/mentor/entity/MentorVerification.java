@@ -46,20 +46,20 @@ public class MentorVerification {
     @Column(name = "id_card_front_url", nullable = false, columnDefinition = "TEXT")
     private String idCardFrontUrl;
 
-    @Column(name = "id_card_front_media_id")
-    private Long idCardFrontMediaId;
+    @Column(name = "id_card_front_media_id", length = 64)
+    private String idCardFrontMediaId;
 
     @Column(name = "id_card_back_url", nullable = false, columnDefinition = "TEXT")
     private String idCardBackUrl;
 
-    @Column(name = "id_card_back_media_id")
-    private Long idCardBackMediaId;
+    @Column(name = "id_card_back_media_id", length = 64)
+    private String idCardBackMediaId;
 
     @Column(name = "selfie_with_id_url", columnDefinition = "TEXT")
     private String selfieWithIdUrl;
 
-    @Column(name = "selfie_with_id_media_id")
-    private Long selfieWithIdMediaId;
+    @Column(name = "selfie_with_id_media_id", length = 64)
+    private String selfieWithIdMediaId;
 
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.VARCHAR)
