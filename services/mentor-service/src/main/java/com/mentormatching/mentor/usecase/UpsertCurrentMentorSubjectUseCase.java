@@ -1,5 +1,6 @@
 package com.mentormatching.mentor.usecase;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 import com.mentormatching.mentor.dto.command.UpsertCurrentMentorSubjectCommand;
@@ -8,6 +9,7 @@ import com.mentormatching.mentor.entity.MentorSubject;
 import com.mentormatching.mentor.exception.ApiException;
 import com.mentormatching.mentor.repository.MentorProfileRepository;
 import com.mentormatching.mentor.repository.MentorSubjectRepository;
+import com.mentormatching.mentor.repository.SubjectGradeRepository;
 import jakarta.validation.Validator;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,13 +25,16 @@ public class UpsertCurrentMentorSubjectUseCase {
 
     private final MentorProfileRepository mentorProfileRepository;
     private final MentorSubjectRepository mentorSubjectRepository;
+    private final SubjectGradeRepository subjectGradeRepository;
     private final Validator validator;
 
     public UpsertCurrentMentorSubjectUseCase(MentorProfileRepository mentorProfileRepository,
                                              MentorSubjectRepository mentorSubjectRepository,
+                                             SubjectGradeRepository subjectGradeRepository,
                                              Validator validator) {
         this.mentorProfileRepository = mentorProfileRepository;
         this.mentorSubjectRepository = mentorSubjectRepository;
+        this.subjectGradeRepository = subjectGradeRepository;
         this.validator = validator;
     }
 
@@ -40,13 +45,21 @@ public class UpsertCurrentMentorSubjectUseCase {
      * @param userId  UUID tài khoản mentor đã xác thực
      * @param command môn dạy cần tạo hoặc thay thế
      * @return dữ liệu môn dạy đã lưu
-     * @throws ApiException 400 nếu đầu vào sai; 404 nếu thiếu hồ sơ hoặc môn không thuộc mentor;
+     * @throws ApiException 400 nếu đầu vào sai; 404 nếu thiếu hồ sơ, môn không thuộc mentor, hoặc subjectGradeId không tồn tại;
      *                      409 nếu môn/lớp đã được mentor này khai báo
      */
     @Transactional
     public MentorSubjectDetails execute(UUID userId, UpsertCurrentMentorSubjectCommand command) {
         if (userId == null || command == null || !validator.validate(command).isEmpty()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Invalid mentor subject.");
+        }
+
+        if (command.pricePerHour() != null && command.pricePerHour().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_PRICE", "Price per hour must be greater than 0.");
+        }
+
+        if (!subjectGradeRepository.existsById(command.subjectGradeId())) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "SUBJECT_GRADE_NOT_FOUND", "Subject grade not found.");
         }
 
         var profile = mentorProfileRepository.findByUserIdForSubjectUpdate(userId)

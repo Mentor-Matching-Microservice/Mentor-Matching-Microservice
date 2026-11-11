@@ -58,6 +58,9 @@ public class MentorAchievement {
     @Column(name = "proof_url", columnDefinition = "TEXT")
     private String proofUrl;
 
+    @Column(name = "proof_media_id")
+    private Long proofMediaId;
+
     @Column(name = "is_verified")
     private Boolean verified = false;
 

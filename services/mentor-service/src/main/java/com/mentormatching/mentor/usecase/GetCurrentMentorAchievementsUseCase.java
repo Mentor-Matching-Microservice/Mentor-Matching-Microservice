@@ -60,6 +60,7 @@ public class GetCurrentMentorAchievementsUseCase {
                 .issuer(achievement.getIssuer())
                 .achievedAt(achievement.getAchievedAt())
                 .proofUrl(achievement.getProofUrl())
+                .proofMediaId(achievement.getProofMediaId())
                 .verified(achievement.getVerified())
                 .build();
     }

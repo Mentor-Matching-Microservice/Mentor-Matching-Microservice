@@ -15,6 +15,7 @@ public record MentorAchievementDetails(
         String issuer,
         LocalDate achievedAt,
         String proofUrl,
+        Long proofMediaId,
         Boolean verified) {
 
     @Override
