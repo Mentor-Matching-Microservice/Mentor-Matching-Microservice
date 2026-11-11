@@ -4,6 +4,12 @@ server:
 spring:
   application:
     name: api-gateway-service
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
   cloud:
     gateway:
       server:
@@ -69,6 +75,60 @@ spring:
                 - Path=/api/v1/admin/stats/**
               filters:
                 - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - id: auth-service-openapi
+              uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/docs/auth/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: user-service-openapi
+              uri: ${USER_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/docs/users/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: mentor-service-openapi
+              uri: ${MENTOR_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/docs/mentors/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: booking-service-openapi
+              uri: ${BOOKING_SERVICE_URL:http://localhost:8084}
+              predicates:
+                - Path=/docs/bookings/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: payment-service-openapi
+              uri: ${PAYMENT_SERVICE_URL:http://localhost:8085}
+              predicates:
+                - Path=/docs/payments/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: review-service-openapi
+              uri: ${REVIEW_SERVICE_URL:http://localhost:8086}
+              predicates:
+                - Path=/docs/reviews/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: media-service-openapi
+              uri: ${MEDIA_SERVICE_URL:http://localhost:8088}
+              predicates:
+                - Path=/docs/media/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: notification-service-openapi
+              uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8089}
+              predicates:
+                - Path=/docs/notifications/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: stats-service-openapi
+              uri: ${STATS_SERVICE_URL:http://localhost:8090}
+              predicates:
+                - Path=/docs/stats/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
 
 management:
   endpoints:
@@ -82,3 +142,31 @@ management:
 gateway:
   cors:
     allowed-origins: ${GATEWAY_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  rate-limit:
+    enabled: ${GATEWAY_RATE_LIMIT_ENABLED:true}
+    requests: ${GATEWAY_RATE_LIMIT_REQUESTS:60}
+    window: ${GATEWAY_RATE_LIMIT_WINDOW:PT1M}
+    key-prefix: ${GATEWAY_RATE_LIMIT_KEY_PREFIX:mentor-gateway:rate-limit}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: auth-service
+        url: /docs/auth/v3/api-docs
+      - name: user-service
+        url: /docs/users/v3/api-docs
+      - name: mentor-service
+        url: /docs/mentors/v3/api-docs
+      - name: booking-service
+        url: /docs/bookings/v3/api-docs
+      - name: payment-service
+        url: /docs/payments/v3/api-docs
+      - name: review-service
+        url: /docs/reviews/v3/api-docs
+      - name: media-service
+        url: /docs/media/v3/api-docs
+      - name: notification-service
+        url: /docs/notifications/v3/api-docs
+      - name: stats-service
+        url: /docs/stats/v3/api-docs
