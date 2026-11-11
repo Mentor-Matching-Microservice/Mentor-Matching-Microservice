@@ -4,6 +4,7 @@ import com.mentormatching.mentor.security.ProblemAuthenticationEntryPoint;
 import com.mentormatching.mentor.security.ProblemAccessDeniedHandler;
 
 import jakarta.servlet.DispatcherType;
+import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -46,6 +47,14 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(auth -> auth
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/mentors",
+                                "/api/v1/mentors/personality-options",
+                                "/api/v1/mentors/highlight-options",
+                                "/api/v1/mentors/{mentorId:[0-9]+}",
+                                "/api/v1/mentors/{mentorId:[0-9]+}/subjects",
+                                "/api/v1/mentors/{mentorId:[0-9]+}/traits",
+                                "/api/v1/mentors/{mentorId:[0-9]+}/achievements").permitAll()
                         .anyRequest().authenticated())
 
                 // Exception Handling
