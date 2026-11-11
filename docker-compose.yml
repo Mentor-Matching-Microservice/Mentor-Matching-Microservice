@@ -70,11 +70,26 @@ services:
         - CMD-SHELL
         - >-
           mongosh --quiet --eval
-          'try { rs.status().ok } catch (e) { rs.initiate({_id:"rs0",members:[{_id:0,host:"localhost:27017"}]}).ok }'
+          'try { const cfg = rs.conf(); if (cfg.members[0].host !== "mongodb:27017") { cfg.members[0].host = "mongodb:27017"; rs.reconfig(cfg, {force:true}); } rs.status().ok } catch (e) { rs.initiate({_id:"rs0",members:[{_id:0,host:"mongodb:27017"}]}).ok }'
       interval: 10s
       timeout: 10s
       retries: 12
       start_period: 20s
+
+  mongodb-init:
+    image: mongo:8.0
+    container_name: mm-mongodb-init
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    entrypoint: ["mongosh", "--host", "mongodb:27017", "--quiet", "--eval"]
+    command:
+      - >-
+        for (const name of ['mm_media', 'mm_notification', 'mm_stats']) {
+          const target = db.getSiblingDB(name);
+          if (!target.getCollectionNames().includes('_compose_init')) target.createCollection('_compose_init');
+        }
+    restart: "no"
 
   rabbitmq:
     image: rabbitmq:4.1-management
