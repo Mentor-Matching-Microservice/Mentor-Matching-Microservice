@@ -24,3 +24,4 @@ public class GetCitySummaryUseCase {
                 .orElseThrow(() -> new ApiException(NOT_FOUND, "CITY_NOT_FOUND", "City not found"));
     }
 }
+

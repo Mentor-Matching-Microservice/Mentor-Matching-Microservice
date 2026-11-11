@@ -24,3 +24,4 @@ public class GetDistrictSummaryUseCase {
                 .orElseThrow(() -> new ApiException(NOT_FOUND, "DISTRICT_NOT_FOUND", "District not found"));
     }
 }
+

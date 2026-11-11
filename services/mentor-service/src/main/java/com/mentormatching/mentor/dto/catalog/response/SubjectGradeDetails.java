@@ -13,3 +13,4 @@ public record SubjectGradeDetails(Long id, Long subjectId, Long gradeId) {
                 .build();
     }
 }
+

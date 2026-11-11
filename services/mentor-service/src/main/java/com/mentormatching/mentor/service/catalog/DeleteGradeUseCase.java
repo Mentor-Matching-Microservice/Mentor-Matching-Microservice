@@ -48,3 +48,4 @@ public class DeleteGradeUseCase {
         repository.delete(entity);
     }
 }
+

@@ -104,3 +104,4 @@ class CatalogControllerTest {
                 .andExpect(jsonPath("$.data.subjectName", is("Mathematics")));
     }
 }
+

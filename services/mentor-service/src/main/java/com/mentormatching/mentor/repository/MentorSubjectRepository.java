@@ -14,6 +14,8 @@ public interface MentorSubjectRepository extends JpaRepository<MentorSubject, Lo
 
     List<MentorSubject> findAllByMentorIdOrderByIdAsc(Long mentorId);
 
+    List<MentorSubject> findAllByMentorIdAndActiveTrueOrderByIdAsc(Long mentorId);
+
     long countByMentorIdAndActiveTrue(Long mentorId);
 
     Optional<MentorSubject> findByIdAndMentorId(Long id, Long mentorId);

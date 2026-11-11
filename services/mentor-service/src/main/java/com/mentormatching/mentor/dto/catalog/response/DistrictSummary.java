@@ -14,3 +14,4 @@ public record DistrictSummary(Long id, Long cityId, String code, String name) {
                 .build();
     }
 }
+

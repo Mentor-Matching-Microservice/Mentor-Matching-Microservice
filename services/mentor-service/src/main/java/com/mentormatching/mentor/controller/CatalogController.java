@@ -1,6 +1,6 @@
 package com.mentormatching.mentor.controller;
 
-import com.mentormatching.mentor.dto.ApiResponse;
+import com.mentormatching.mentor.dto.response.ApiResponse;
 import com.mentormatching.mentor.dto.catalog.query.GetSubjectGradeIdsQuery;
 import com.mentormatching.mentor.dto.catalog.response.CatalogOptions;
 import com.mentormatching.mentor.dto.catalog.response.SubjectGradeSummary;
@@ -42,3 +42,4 @@ public class CatalogController {
         return ApiResponse.success(summary.execute(id), "Get subject grade successfully");
     }
 }
+

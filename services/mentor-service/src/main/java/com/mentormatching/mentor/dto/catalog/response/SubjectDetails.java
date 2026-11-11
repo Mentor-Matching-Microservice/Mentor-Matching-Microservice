@@ -14,3 +14,4 @@ public record SubjectDetails(Long id, Long categoryId, String name, String descr
                 .build();
     }
 }
+

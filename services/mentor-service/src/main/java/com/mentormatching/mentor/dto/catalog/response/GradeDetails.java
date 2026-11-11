@@ -14,3 +14,4 @@ public record GradeDetails(Long id, String name, GradeLevelGroup levelGroup) {
                 .build();
     }
 }
+

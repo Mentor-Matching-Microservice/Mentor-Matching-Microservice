@@ -1,0 +1,47 @@
+server:
+  port: ${SERVER_PORT:8761}
+
+spring:
+  application:
+    name: discovery-service
+
+eureka:
+  instance:
+    # Hostname that clients use to reach this registry (container/service name in Docker).
+    hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
+  client:
+    # Standalone registry: no peer replication, does not register itself or fetch a registry.
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      # Points at itself so the server never treats another host/port as a peer.
+      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
+  server:
+    # Production default is true (protects the registry during network partitions);
+    # local development usually sets EUREKA_SELF_PRESERVATION=false so dead instances are evicted.
+    enable-self-preservation: ${EUREKA_SELF_PRESERVATION:true}
+    renewal-percent-threshold: ${EUREKA_RENEWAL_PERCENT_THRESHOLD:0.85}
+    eviction-interval-timer-in-ms: ${EUREKA_EVICTION_INTERVAL_MS:60000}
+    response-cache-update-interval-ms: ${EUREKA_RESPONSE_CACHE_UPDATE_INTERVAL_MS:30000}
+    # Standalone: there are no peers to wait for before serving the registry.
+    wait-time-in-ms-when-sync-empty: 0
+  dashboard:
+    # Disabled unless explicitly enabled; even when enabled it requires authentication.
+    enabled: ${EUREKA_DASHBOARD_ENABLED:false}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+
+discovery:
+  security:
+    # Required. Empty defaults make startup fail with a clear message instead of using a built-in credential.
+    username: ${DISCOVERY_USERNAME:}
+    password: ${DISCOVERY_PASSWORD:}

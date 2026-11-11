@@ -25,3 +25,4 @@ public class GetGradeDetailUseCase {
                 .orElseThrow(() -> new ApiException(NOT_FOUND, "GRADE_NOT_FOUND", "Grade not found"));
     }
 }
+

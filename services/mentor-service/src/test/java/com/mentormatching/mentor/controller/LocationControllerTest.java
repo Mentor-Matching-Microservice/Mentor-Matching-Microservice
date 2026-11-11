@@ -98,3 +98,4 @@ class LocationControllerTest {
                 .andExpect(jsonPath("$.data.code", is("Q1")));
     }
 }
+

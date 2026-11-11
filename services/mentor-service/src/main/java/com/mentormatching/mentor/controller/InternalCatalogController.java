@@ -1,6 +1,6 @@
 package com.mentormatching.mentor.controller;
 
-import com.mentormatching.mentor.dto.ApiResponse;
+import com.mentormatching.mentor.dto.response.ApiResponse;
 import com.mentormatching.mentor.dto.catalog.response.GradeDetails;
 import com.mentormatching.mentor.service.catalog.GetGradeDetailUseCase;
 import lombok.RequiredArgsConstructor;
@@ -21,3 +21,4 @@ public class InternalCatalogController {
         return ApiResponse.success(gradeDetailUseCase.execute(gradeId), "Get grade detail successfully");
     }
 }
+

@@ -11,3 +11,4 @@ public record SubjectGradeSummary(
         String gradeName
 ) {
 }
+

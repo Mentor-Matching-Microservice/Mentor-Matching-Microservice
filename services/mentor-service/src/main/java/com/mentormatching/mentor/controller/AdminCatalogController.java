@@ -1,6 +1,6 @@
 package com.mentormatching.mentor.controller;
 
-import com.mentormatching.mentor.dto.ApiResponse;
+import com.mentormatching.mentor.dto.response.ApiResponse;
 import com.mentormatching.mentor.dto.catalog.command.CreateGradeCommand;
 import com.mentormatching.mentor.dto.catalog.command.CreateSubjectCommand;
 import com.mentormatching.mentor.dto.catalog.command.DeleteGradeCommand;
@@ -77,3 +77,4 @@ public class AdminCatalogController {
         return ApiResponse.success(null, "Grade deleted successfully");
     }
 }
+

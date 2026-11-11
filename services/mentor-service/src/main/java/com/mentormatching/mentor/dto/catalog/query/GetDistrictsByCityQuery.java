@@ -11,3 +11,4 @@ public record GetDistrictsByCityQuery(@NotNull @Positive Long cityId, String sea
         search = SearchText.normalize(search);
     }
 }
+

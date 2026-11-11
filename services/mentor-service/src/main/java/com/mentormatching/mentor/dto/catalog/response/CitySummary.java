@@ -13,3 +13,4 @@ public record CitySummary(Long id, String code, String name) {
                 .build();
     }
 }
+

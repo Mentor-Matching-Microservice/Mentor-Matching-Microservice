@@ -13,3 +13,4 @@ public record CategoryDetails(Long id, String name, String description) {
                 .build();
     }
 }
+

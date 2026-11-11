@@ -6,3 +6,4 @@ import lombok.Builder;
 @Builder
 public record GetSubjectGradeIdsQuery(@Positive Long subjectId, @Positive Long gradeId) {
 }
+

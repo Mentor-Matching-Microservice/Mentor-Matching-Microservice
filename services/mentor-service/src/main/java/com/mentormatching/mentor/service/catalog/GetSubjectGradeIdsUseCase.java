@@ -38,3 +38,4 @@ public class GetSubjectGradeIdsUseCase {
         return List.of();
     }
 }
+

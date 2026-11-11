@@ -49,3 +49,4 @@ class InternalCatalogControllerTest {
                 .andExpect(jsonPath("$.data.name", is("Grade 12")));
     }
 }
+

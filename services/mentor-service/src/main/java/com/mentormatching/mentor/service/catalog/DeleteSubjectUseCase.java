@@ -48,3 +48,4 @@ public class DeleteSubjectUseCase {
         repository.delete(entity);
     }
 }
+

@@ -1,6 +1,6 @@
 package com.mentormatching.mentor.controller;
 
-import com.mentormatching.mentor.dto.ApiResponse;
+import com.mentormatching.mentor.dto.response.ApiResponse;
 import com.mentormatching.mentor.dto.catalog.query.GetCitiesQuery;
 import com.mentormatching.mentor.dto.catalog.query.GetDistrictsByCityQuery;
 import com.mentormatching.mentor.dto.catalog.response.CitySummary;
@@ -50,3 +50,4 @@ public class LocationController {
         return ApiResponse.success(district.execute(id), "Get district successfully");
     }
 }
+
