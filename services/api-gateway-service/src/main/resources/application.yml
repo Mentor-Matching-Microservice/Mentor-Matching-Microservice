@@ -21,22 +21,22 @@ spring:
                 - Path=/api/v1/users/**
               filters:
                 - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - id: booking-service
+              uri: ${BOOKING_SERVICE_URL:http://localhost:8084}
+              predicates:
+                - Path=/api/v1/bookings/**,/api/v1/scheduling/**,/api/v1/mentors/*/calendar-booking,/api/v1/mentors/*/availabilities
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
             - id: mentor-service
               uri: ${MENTOR_SERVICE_URL:http://localhost:8083}
               predicates:
-                - Path=/api/v1/mentors/**
+                - Path=/api/v1/mentors/**,/api/v1/admin/mentor-verifications/**
               filters:
                 - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
             - id: catalog-service
               uri: ${CATALOG_SERVICE_URL:http://localhost:8087}
               predicates:
                 - Path=/api/v1/catalog/**,/api/v1/locations/**,/api/v1/admin/catalog/**
-              filters:
-                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
-            - id: booking-service
-              uri: ${BOOKING_SERVICE_URL:http://localhost:8084}
-              predicates:
-                - Path=/api/v1/bookings/**,/api/v1/scheduling/**
               filters:
                 - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
             - id: payment-service
@@ -55,6 +55,18 @@ spring:
               uri: ${MEDIA_SERVICE_URL:http://localhost:8088}
               predicates:
                 - Path=/api/v1/media/**
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - id: notification-service
+              uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8089}
+              predicates:
+                - Path=/api/v1/notifications/**,/ws/notifications/**
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - id: stats-service
+              uri: ${STATS_SERVICE_URL:http://localhost:8090}
+              predicates:
+                - Path=/api/v1/admin/stats/**
               filters:
                 - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
 
