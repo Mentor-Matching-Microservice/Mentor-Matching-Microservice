@@ -81,6 +81,8 @@ public class UpdateCurrentMentorProfileUseCase {
                 .education(saved.getEducation())
                 .major(saved.getMajor())
                 .meetingType(saved.getMeetingType())
+                .approvalStatus(saved.getApprovalStatus())
+                .rejectionReason(saved.getRejectionReason())
                 .createdAt(saved.getCreatedAt())
                 .updatedAt(saved.getUpdatedAt())
                 .build();

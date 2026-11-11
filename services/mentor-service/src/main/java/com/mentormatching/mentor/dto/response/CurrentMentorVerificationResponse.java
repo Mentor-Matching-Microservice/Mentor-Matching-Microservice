@@ -13,8 +13,11 @@ import lombok.Builder;
  * @param fullName họ tên trên giấy tờ
  * @param idCardNumber số giấy tờ
  * @param idCardFrontUrl URL ảnh mặt trước giấy tờ
+ * @param idCardFrontMediaId Media ID ảnh mặt trước
  * @param idCardBackUrl URL ảnh mặt sau giấy tờ
+ * @param idCardBackMediaId Media ID ảnh mặt sau
  * @param selfieWithIdUrl URL ảnh chụp cùng giấy tờ
+ * @param selfieWithIdMediaId Media ID ảnh chụp cùng giấy tờ
  * @param verificationStatus trạng thái xác minh
  * @param rejectionReason lý do từ chối, nếu có
  * @param createdAt thời điểm nộp lần đầu
@@ -27,8 +30,11 @@ public record CurrentMentorVerificationResponse(
         String fullName,
         String idCardNumber,
         String idCardFrontUrl,
+        String idCardFrontMediaId,
         String idCardBackUrl,
+        String idCardBackMediaId,
         String selfieWithIdUrl,
+        String selfieWithIdMediaId,
         MentorVerificationStatus verificationStatus,
         String rejectionReason,
         Instant createdAt,

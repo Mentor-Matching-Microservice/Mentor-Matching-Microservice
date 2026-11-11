@@ -2,6 +2,7 @@ package com.mentormatching.mentor.usecase;
 
 import java.util.UUID;
 
+import com.mentormatching.mentor.client.MediaServiceClient;
 import com.mentormatching.mentor.dto.command.UpsertCurrentMentorVerificationCommand;
 import com.mentormatching.mentor.dto.response.CurrentMentorVerificationResponse;
 import com.mentormatching.mentor.entity.MentorProfile;
@@ -25,12 +26,16 @@ public class UpsertCurrentMentorVerificationUseCase {
 
     private final MentorProfileRepository mentorProfileRepository;
     private final MentorVerificationRepository mentorVerificationRepository;
+    private final MediaServiceClient mediaServiceClient;
     private final Validator validator;
 
     public UpsertCurrentMentorVerificationUseCase(MentorProfileRepository mentorProfileRepository,
-                                                  MentorVerificationRepository mentorVerificationRepository, Validator validator) {
+                                                  MentorVerificationRepository mentorVerificationRepository,
+                                                  MediaServiceClient mediaServiceClient,
+                                                  Validator validator) {
         this.mentorProfileRepository = mentorProfileRepository;
         this.mentorVerificationRepository = mentorVerificationRepository;
+        this.mediaServiceClient = mediaServiceClient;
         this.validator = validator;
     }
 
@@ -60,6 +65,27 @@ public class UpsertCurrentMentorVerificationUseCase {
         if (existing.isPresent() && existing.get().getVerificationStatus() != MentorVerificationStatus.REJECTED) {
             throw new ApiException(HttpStatus.CONFLICT, "VERIFICATION_NOT_EDITABLE", "Mentor verification cannot be updated.");
         }
+
+        String referenceId = profile.getId() != null ? profile.getId().toString() : userId.toString();
+        if (command.idCardFrontMediaId() != null && !command.idCardFrontMediaId().isBlank()) {
+            boolean valid = mediaServiceClient.verifyAndAttach(command.idCardFrontMediaId(), userId, referenceId);
+            if (!valid) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_MEDIA", "Failed to verify ID card front media.");
+            }
+        }
+        if (command.idCardBackMediaId() != null && !command.idCardBackMediaId().isBlank()) {
+            boolean valid = mediaServiceClient.verifyAndAttach(command.idCardBackMediaId(), userId, referenceId);
+            if (!valid) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_MEDIA", "Failed to verify ID card back media.");
+            }
+        }
+        if (command.selfieWithIdMediaId() != null && !command.selfieWithIdMediaId().isBlank()) {
+            boolean valid = mediaServiceClient.verifyAndAttach(command.selfieWithIdMediaId(), userId, referenceId);
+            if (!valid) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_MEDIA", "Failed to verify selfie media.");
+            }
+        }
+
         var verification = existing.orElseGet(() -> {
             var submitted = new MentorVerification();
             submitted.setMentorId(profile.getId());
@@ -69,11 +95,11 @@ public class UpsertCurrentMentorVerificationUseCase {
         verification.setFullName(command.fullName());
         verification.setIdCardNumber(command.idCardNumber());
         verification.setIdCardFrontUrl(command.idCardFrontUrl());
+        verification.setIdCardFrontMediaId(command.idCardFrontMediaId());
         verification.setIdCardBackUrl(command.idCardBackUrl());
+        verification.setIdCardBackMediaId(command.idCardBackMediaId());
         verification.setSelfieWithIdUrl(command.selfieWithIdUrl());
-        verification.setIdCardFrontMediaId(null);
-        verification.setIdCardBackMediaId(null);
-        verification.setSelfieWithIdMediaId(null);
+        verification.setSelfieWithIdMediaId(command.selfieWithIdMediaId());
         verification.setVerificationStatus(MentorVerificationStatus.PENDING);
         verification.setVerifiedBy(null);
         verification.setVerifiedAt(null);
@@ -86,8 +112,11 @@ public class UpsertCurrentMentorVerificationUseCase {
                 .fullName(saved.getFullName())
                 .idCardNumber(saved.getIdCardNumber())
                 .idCardFrontUrl(saved.getIdCardFrontUrl())
+                .idCardFrontMediaId(saved.getIdCardFrontMediaId())
                 .idCardBackUrl(saved.getIdCardBackUrl())
+                .idCardBackMediaId(saved.getIdCardBackMediaId())
                 .selfieWithIdUrl(saved.getSelfieWithIdUrl())
+                .selfieWithIdMediaId(saved.getSelfieWithIdMediaId())
                 .verificationStatus(saved.getVerificationStatus())
                 .rejectionReason(saved.getRejectionReason())
                 .createdAt(saved.getCreatedAt())

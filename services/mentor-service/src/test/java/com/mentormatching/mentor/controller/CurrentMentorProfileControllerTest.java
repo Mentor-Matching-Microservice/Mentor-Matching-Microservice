@@ -13,8 +13,14 @@ import com.mentormatching.mentor.exception.ProblemResponses;
 import com.mentormatching.mentor.exception.RequestIdFilter;
 import com.mentormatching.mentor.security.ProblemAccessDeniedHandler;
 import com.mentormatching.mentor.security.ProblemAuthenticationEntryPoint;
+import com.mentormatching.mentor.dto.response.MentorOnboardingStatusResponse;
+import com.mentormatching.mentor.dto.response.SubmitMentorProfileResponse;
+import com.mentormatching.mentor.entity.MentorApprovalStatus;
+import com.mentormatching.mentor.entity.MentorVerificationStatus;
 import com.mentormatching.mentor.usecase.CreateCurrentMentorProfileUseCase;
 import com.mentormatching.mentor.usecase.GetCurrentMentorProfileUseCase;
+import com.mentormatching.mentor.usecase.GetMentorOnboardingStatusUseCase;
+import com.mentormatching.mentor.usecase.SubmitMentorProfileUseCase;
 import com.mentormatching.mentor.usecase.UpdateCurrentMentorProfileUseCase;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,6 +62,12 @@ class CurrentMentorProfileControllerTest {
 
     @MockitoBean
     UpdateCurrentMentorProfileUseCase updateCurrentMentorProfileUseCase;
+
+    @MockitoBean
+    GetMentorOnboardingStatusUseCase getMentorOnboardingStatusUseCase;
+
+    @MockitoBean
+    SubmitMentorProfileUseCase submitMentorProfileUseCase;
 
     private final UUID userId = UUID.randomUUID();
 
@@ -154,5 +166,56 @@ class CurrentMentorProfileControllerTest {
     void getCurrentMentorProfile_unauthenticatedReturns401() throws Exception {
         mvc.perform(get("/api/v1/mentors/me"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void getOnboardingStatus_success() throws Exception {
+        var status = MentorOnboardingStatusResponse.builder()
+                .approvalStatus(MentorApprovalStatus.DRAFT)
+                .isBasicProfileCompleted(true)
+                .activeSubjectsCount(2)
+                .hasSubmittedKyc(true)
+                .kycStatus(MentorVerificationStatus.PENDING)
+                .canSubmit(true)
+                .build();
+
+        when(getMentorOnboardingStatusUseCase.execute(userId)).thenReturn(status);
+
+        mvc.perform(get("/api/v1/mentors/me/onboarding-status")
+                        .with(jwt().jwt(j -> j.subject(userId.toString()))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data.approvalStatus", is("DRAFT")))
+                .andExpect(jsonPath("$.data.canSubmit", is(true)))
+                .andExpect(jsonPath("$.data.activeSubjectsCount", is(2)));
+    }
+
+    @Test
+    void submitProfile_success() throws Exception {
+        var response = SubmitMentorProfileResponse.builder()
+                .mentorId(1L)
+                .approvalStatus(MentorApprovalStatus.PENDING)
+                .message("Mentor profile submitted successfully for admin review.")
+                .build();
+
+        when(submitMentorProfileUseCase.execute(userId)).thenReturn(response);
+
+        mvc.perform(post("/api/v1/mentors/me/submission")
+                        .with(jwt().jwt(j -> j.subject(userId.toString()))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data.approvalStatus", is("PENDING")))
+                .andExpect(jsonPath("$.data.mentorId", is(1)));
+    }
+
+    @Test
+    void submitProfile_ineligible_returns400() throws Exception {
+        when(submitMentorProfileUseCase.execute(userId))
+                .thenThrow(new ApiException(HttpStatus.BAD_REQUEST, "INCOMPLETE_PROFILE", "Basic profile required"));
+
+        mvc.perform(post("/api/v1/mentors/me/submission")
+                        .with(jwt().jwt(j -> j.subject(userId.toString()))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code", is("INCOMPLETE_PROFILE")));
     }
 }

@@ -19,6 +19,11 @@ public interface MentorProfileRepository extends JpaRepository<MentorProfile, Lo
 
     Optional<MentorProfile> findByUserId(UUID userId);
 
+    /** Khóa hồ sơ để admin review không ghi đè nhau. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from MentorProfile p where p.id = :id")
+    Optional<MentorProfile> findByIdForReview(@Param("id") Long id);
+
     /** Tuần tự hóa các lần thay tập tính cách và điểm nổi bật của cùng mentor. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from MentorProfile p where p.userId = :userId")
