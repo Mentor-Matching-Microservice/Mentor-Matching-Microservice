@@ -5,8 +5,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.mentormatching.mentor.dto.response.MentorBookingContextResponse;
+import com.mentormatching.mentor.entity.AccountStatus;
 import com.mentormatching.mentor.entity.Grade;
 import com.mentormatching.mentor.entity.MeetingType;
+import com.mentormatching.mentor.entity.MentorApprovalStatus;
 import com.mentormatching.mentor.entity.MentorProfile;
 import com.mentormatching.mentor.entity.MentorSubject;
 import com.mentormatching.mentor.entity.Subject;
@@ -67,6 +69,8 @@ class GetMentorBookingContextUseCaseTest {
         profile.setUserId(userId);
         profile.setFullName("John Doe");
         profile.setMeetingType(MeetingType.HYBRID);
+        profile.setApprovalStatus(MentorApprovalStatus.APPROVED);
+        profile.setAccountStatus(AccountStatus.ACTIVE);
         ReflectionTestUtils.setField(profile, "id", 1L);
 
         MentorSubject subject = new MentorSubject();
@@ -105,7 +109,50 @@ class GetMentorBookingContextUseCaseTest {
         assertThat(result.subjectName()).isEqualTo("Math");
         assertThat(result.gradeName()).isEqualTo("Grade 12");
         assertThat(result.pricePerHour()).isEqualByComparingTo("200000.00");
+        assertThat(result.currency()).isEqualTo("VND");
+        assertThat(result.eligible()).isTrue();
         assertThat(result.active()).isTrue();
+    }
+
+    @Test
+    void execute_mentorNotApproved_eligibleIsFalse() {
+        UUID userId = UUID.randomUUID();
+        MentorProfile profile = new MentorProfile();
+        profile.setUserId(userId);
+        profile.setFullName("John Doe");
+        profile.setMeetingType(MeetingType.HYBRID);
+        profile.setApprovalStatus(MentorApprovalStatus.PENDING);
+        profile.setAccountStatus(AccountStatus.ACTIVE);
+        ReflectionTestUtils.setField(profile, "id", 1L);
+
+        MentorSubject subject = new MentorSubject();
+        subject.setMentorId(1L);
+        subject.setSubjectGradeId(10L);
+        subject.setPricePerHour(new BigDecimal("200000.00"));
+        subject.setActive(true);
+        ReflectionTestUtils.setField(subject, "id", 100L);
+
+        SubjectGrade sg = new SubjectGrade(20L, 30L);
+        ReflectionTestUtils.setField(sg, "id", 10L);
+
+        Subject s = new Subject();
+        s.setName("Math");
+        ReflectionTestUtils.setField(s, "id", 20L);
+
+        Grade g = new Grade();
+        g.setName("Grade 12");
+        g.setLevelGroup(com.mentormatching.mentor.entity.GradeLevelGroup.HIGH_SCHOOL);
+        ReflectionTestUtils.setField(g, "id", 30L);
+
+        when(mentorProfileRepository.findById(1L)).thenReturn(Optional.of(profile));
+        when(mentorSubjectRepository.findByIdAndMentorId(100L, 1L)).thenReturn(Optional.of(subject));
+        when(subjectGradeRepository.findById(10L)).thenReturn(Optional.of(sg));
+        when(subjectRepository.findById(20L)).thenReturn(Optional.of(s));
+        when(gradeRepository.findById(30L)).thenReturn(Optional.of(g));
+
+        MentorBookingContextResponse result = useCase.execute(1L, 100L);
+
+        assertThat(result.eligible()).isFalse();
     }
 
     @Test

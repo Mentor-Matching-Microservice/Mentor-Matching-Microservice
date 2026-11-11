@@ -2,6 +2,7 @@ package com.mentormatching.mentor.controller;
 
 import java.util.UUID;
 
+import com.mentormatching.mentor.dto.command.MentorRatingSyncRequest;
 import com.mentormatching.mentor.dto.command.UserProfileSyncRequest;
 import com.mentormatching.mentor.dto.response.AccountStatusesResponse;
 import com.mentormatching.mentor.dto.response.ApiResponse;
@@ -11,6 +12,7 @@ import com.mentormatching.mentor.entity.MentorProfile;
 import com.mentormatching.mentor.exception.ApiException;
 import com.mentormatching.mentor.repository.MentorProfileRepository;
 import com.mentormatching.mentor.service.ApplyAccountStatusesService;
+import com.mentormatching.mentor.service.ApplyMentorRatingService;
 import com.mentormatching.mentor.service.ApplyUserProfileService;
 import com.mentormatching.mentor.usecase.GetMentorBookingContextUseCase;
 import jakarta.validation.Valid;
@@ -33,6 +35,15 @@ public class InternalMentorController {
     private final MentorProfileRepository mentorProfileRepository;
     private final ApplyUserProfileService applyUserProfileService;
     private final ApplyAccountStatusesService applyAccountStatusesService;
+    private final ApplyMentorRatingService applyMentorRatingService;
+
+    @PutMapping("/{mentorId}/rating")
+    public ApiResponse<Void> updateRating(
+            @PathVariable Long mentorId,
+            @Valid @RequestBody MentorRatingSyncRequest request) {
+        applyMentorRatingService.apply(mentorId, request.averageRating(), request.totalReviews(), request.version());
+        return ApiResponse.success(null, "Mentor rating updated successfully");
+    }
 
     @GetMapping("/{mentorId}/booking-context")
     public MentorBookingContextResponse getBookingContext(

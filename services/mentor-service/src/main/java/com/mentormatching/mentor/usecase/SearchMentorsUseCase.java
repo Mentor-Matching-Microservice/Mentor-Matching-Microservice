@@ -1,12 +1,14 @@
 package com.mentormatching.mentor.usecase;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.mentormatching.mentor.dto.query.SearchMentorsQuery;
 import com.mentormatching.mentor.dto.response.*;
 import com.mentormatching.mentor.entity.MentorProfile;
+import com.mentormatching.mentor.entity.SubjectGrade;
 import com.mentormatching.mentor.exception.ApiException;
 import com.mentormatching.mentor.repository.*;
 import jakarta.validation.Validator;
@@ -27,30 +29,19 @@ public class SearchMentorsUseCase {
 
     private final MentorProfileRepository mentorProfileRepository;
     private final MentorSubjectRepository mentorSubjectRepository;
+    private final SubjectGradeRepository subjectGradeRepository;
     private final Validator validator;
 
-    /**
-     * Khởi tạo use case tìm kiếm.
-     *
-     * @param mentorProfileRepository  repository truy vấn hồ sơ và phân trang
-     * @param mentorSubjectRepository  repository tổng hợp giá các môn đang hoạt động
-     * @param validator validator kiểm tra query cả khi caller không đi qua HTTP
-     */
-    public SearchMentorsUseCase(MentorProfileRepository mentorProfileRepository, MentorSubjectRepository mentorSubjectRepository, Validator validator) {
+    public SearchMentorsUseCase(MentorProfileRepository mentorProfileRepository,
+                                MentorSubjectRepository mentorSubjectRepository,
+                                SubjectGradeRepository subjectGradeRepository,
+                                Validator validator) {
         this.mentorProfileRepository = mentorProfileRepository;
         this.mentorSubjectRepository = mentorSubjectRepository;
+        this.subjectGradeRepository = subjectGradeRepository;
         this.validator = validator;
     }
 
-    /**
-     * Tìm kiếm với sort mặc định createdAt DESC và ID làm tiêu chí phụ cùng chiều.
-     * Các điều kiện môn và khoảng giá phải khớp cùng một môn đang hoạt động.
-     * Giá trả về là giá thấp nhất của tất cả môn hoạt động, không chỉ môn khớp bộ lọc.
-     *
-     * @param query bộ lọc và phân trang; page/size bắt buộc, query không được null
-     * @return danh sách DTO cùng tổng số bản ghi/trang sau khi lọc
-     * @throws ApiException lỗi 400 INVALID_REQUEST nếu query sai constraint hoặc khoảng min/max đảo ngược
-     */
     public PageResponse<MentorSearchItemResponse> execute(SearchMentorsQuery query) {
         if (query == null || !validator.validate(query).isEmpty()) {
             throw invalid();
@@ -64,6 +55,29 @@ public class SearchMentorsUseCase {
             throw invalid();
         }
 
+        List<Long> resolvedSubjectGradeIds = null;
+        if (query.subjectId() != null || query.gradeId() != null) {
+            if (query.subjectId() != null && query.gradeId() != null) {
+                resolvedSubjectGradeIds = subjectGradeRepository
+                        .findBySubjectIdAndGradeId(query.subjectId(), query.gradeId())
+                        .map(SubjectGrade::getId)
+                        .map(List::of)
+                        .orElse(List.of());
+            } else if (query.subjectId() != null) {
+                resolvedSubjectGradeIds = subjectGradeRepository
+                        .findBySubjectId(query.subjectId())
+                        .stream()
+                        .map(SubjectGrade::getId)
+                        .toList();
+            } else {
+                resolvedSubjectGradeIds = subjectGradeRepository
+                        .findByGradeId(query.gradeId())
+                        .stream()
+                        .map(SubjectGrade::getId)
+                        .toList();
+            }
+        }
+
         // Build Page
         String field = query.sortBy() == null ? "createdAt" : query.sortBy();
         Sort.Direction direction = query.sortDirection() == null ? Sort.Direction.DESC : Sort.Direction.valueOf(query.sortDirection());
@@ -71,7 +85,10 @@ public class SearchMentorsUseCase {
                 query.page(),
                 query.size(),
                 Sort.by(direction, field).and(Sort.by(direction, "id")));
-        var page = mentorProfileRepository.findAll(MentorSearchSpecifications.matching(query), pageRequest);
+        var page = mentorProfileRepository.findAll(
+                MentorSearchSpecifications.matching(query, resolvedSubjectGradeIds),
+                pageRequest
+        );
 
         // Get Min Price Of Mentor From Mentor Search Paging, Store Map
         Map<Long, BigDecimal> prices = page.isEmpty() ? Map.of() : mentorSubjectRepository.findMinimumActivePrices(
@@ -91,12 +108,15 @@ public class SearchMentorsUseCase {
                 .headline(p.getHeadline())
                 .experienceYears(p.getExperienceYears())
                 .currentPosition(p.getCurrentPosition())
-                .workplace(p.getWorkplace()).education(p.getEducation())
+                .workplace(p.getWorkplace())
+                .education(p.getEducation())
                 .major(p.getMajor())
                 .meetingType(p.getMeetingType())
                 .hometownCityId(p.getHometownCityId())
                 .currentDistrictId(p.getCurrentDistrictId())
                 .minPrice(prices.get(p.getId()))
+                .averageRating(p.getAverageRating())
+                .totalReviews(p.getTotalReviews())
                 .createdAt(p.getCreatedAt())
                 .build()).toList();
 
@@ -109,11 +129,6 @@ public class SearchMentorsUseCase {
                 .build();
     }
 
-    /**
-     * Tạo lỗi đầu vào với mã ổn định, không đưa nội dung query vào thông báo.
-     *
-     * @return exception 400 INVALID_REQUEST
-     */
     private ApiException invalid() {
         return new ApiException(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "Invalid mentor search query.");
     }

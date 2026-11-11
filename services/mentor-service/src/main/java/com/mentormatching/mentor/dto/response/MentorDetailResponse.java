@@ -8,7 +8,7 @@ import com.mentormatching.mentor.entity.MentorGender;
 import lombok.Builder;
 
 /**
- * Hồ sơ mentor công khai; không chứa trạng thái tài khoản hoặc thông tin xét duyệt nội bộ.
+ * Hồ sơ mentor công khai.
  *
  * @param id ID hồ sơ mentor
  * @param userId UUID tài khoản mentor
@@ -26,6 +26,8 @@ import lombok.Builder;
  * @param education trình độ học vấn
  * @param major chuyên ngành
  * @param meetingType hình thức học
+ * @param averageRating điểm đánh giá trung bình
+ * @param totalReviews tổng số đánh giá
  * @param createdAt thời điểm tạo hồ sơ
  * @param updatedAt thời điểm cập nhật hồ sơ
  */
@@ -47,6 +49,8 @@ public record MentorDetailResponse(
         String education,
         String major,
         MeetingType meetingType,
+        Double averageRating,
+        Long totalReviews,
         Instant createdAt,
         Instant updatedAt) {
 }

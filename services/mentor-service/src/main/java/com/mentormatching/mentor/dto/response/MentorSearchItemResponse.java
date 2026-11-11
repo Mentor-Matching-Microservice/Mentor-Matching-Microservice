@@ -26,6 +26,8 @@ import lombok.Builder;
  * @param hometownCityId ID thành phố quê quán
  * @param currentDistrictId ID quận/huyện hiện tại
  * @param minPrice giá thấp nhất không null của tất cả môn active; null nếu không có giá
+ * @param averageRating điểm đánh giá trung bình
+ * @param totalReviews tổng số đánh giá
  * @param createdAt thời điểm tạo hồ sơ UTC
  */
 @Builder
@@ -45,5 +47,7 @@ public record MentorSearchItemResponse(
         Long hometownCityId,
         Long currentDistrictId,
         BigDecimal minPrice,
+        Double averageRating,
+        Long totalReviews,
         Instant createdAt) {
 }

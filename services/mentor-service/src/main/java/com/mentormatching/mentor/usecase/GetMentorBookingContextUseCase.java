@@ -1,7 +1,9 @@
 package com.mentormatching.mentor.usecase;
 
 import com.mentormatching.mentor.dto.response.MentorBookingContextResponse;
+import com.mentormatching.mentor.entity.AccountStatus;
 import com.mentormatching.mentor.entity.Grade;
+import com.mentormatching.mentor.entity.MentorApprovalStatus;
 import com.mentormatching.mentor.entity.Subject;
 import com.mentormatching.mentor.exception.ApiException;
 import com.mentormatching.mentor.repository.GradeRepository;
@@ -51,6 +53,10 @@ public class GetMentorBookingContextUseCase {
             }
         }
 
+        boolean eligible = profile.getApprovalStatus() == MentorApprovalStatus.APPROVED
+                && profile.getAccountStatus() == AccountStatus.ACTIVE
+                && Boolean.TRUE.equals(subject.getActive());
+
         return MentorBookingContextResponse.builder()
                 .mentorId(profile.getId())
                 .mentorUserId(profile.getUserId() != null ? profile.getUserId().toString() : null)
@@ -60,6 +66,8 @@ public class GetMentorBookingContextUseCase {
                 .subjectName(subjectName)
                 .gradeName(gradeName)
                 .pricePerHour(subject.getPricePerHour())
+                .currency("VND")
+                .eligible(eligible)
                 .active(Boolean.TRUE.equals(subject.getActive()))
                 .build();
     }

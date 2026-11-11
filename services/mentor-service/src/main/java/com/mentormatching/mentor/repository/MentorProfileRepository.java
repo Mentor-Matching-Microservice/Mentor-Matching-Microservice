@@ -56,4 +56,18 @@ public interface MentorProfileRepository extends JpaRepository<MentorProfile, Lo
             """)
     int applyUserProfile(@Param("userId") UUID userId, @Param("fullName") String fullName,
                          @Param("avatarUrl") String avatarUrl, @Param("avatarMediaId") Long avatarMediaId);
+
+    @Modifying
+    @Query("""
+            update MentorProfile p
+            set p.averageRating = :averageRating,
+                p.totalReviews = :totalReviews,
+                p.ratingVersion = :version
+            where p.id = :mentorId
+              and (p.ratingVersion is null or p.ratingVersion < :version)
+            """)
+    int applyMentorRating(@Param("mentorId") Long mentorId,
+                          @Param("averageRating") Double averageRating,
+                          @Param("totalReviews") Long totalReviews,
+                          @Param("version") long version);
 }

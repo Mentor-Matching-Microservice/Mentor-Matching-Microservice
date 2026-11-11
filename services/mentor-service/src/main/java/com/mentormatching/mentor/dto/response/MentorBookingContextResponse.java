@@ -13,7 +13,8 @@ public record MentorBookingContextResponse(
         String subjectName,
         String gradeName,
         BigDecimal pricePerHour,
+        String currency,
+        boolean eligible,
         boolean active
 ) {
 }
-
