@@ -22,11 +22,12 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.mysql.MySQLContainer;
+import org.testcontainers.rabbitmq.RabbitMQContainer;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Toàn bộ auth-service trên cổng ngẫu nhiên với MySQL 8.4 thật (Testcontainers, Flyway chạy đủ migration),
+ * Toàn bộ auth-service trên cổng ngẫu nhiên với MySQL 8.4 và RabbitMQ thật (Testcontainers, Flyway chạy đủ migration),
  * khóa RSA sinh riêng cho lần chạy và email bị "bắt lại" trong bộ nhớ. Cần Docker đang chạy.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -40,10 +41,12 @@ public abstract class AuthIntegrationTestSupport {
     protected static final JsonMapper JSON = JsonMapper.builder().build();
 
     protected static final MySQLContainer MYSQL = new MySQLContainer("mysql:8.4").withDatabaseName("mm_auth");
+    protected static final RabbitMQContainer RABBIT = new RabbitMQContainer("rabbitmq:4.1-alpine");
     private static final Path PRIVATE_KEY = writePrivateKey();
 
     static {
         MYSQL.start();
+        RABBIT.start();
     }
 
     @TestConfiguration
@@ -66,6 +69,15 @@ public abstract class AuthIntegrationTestSupport {
         registry.add("auth.tokens.resend-cooldown", () -> "0s");
         registry.add("auth.internal.account-sync.enabled", () -> "true");
         registry.add("auth.internal.account-sync.token", () -> INTERNAL_TOKEN);
+        registry.add("spring.rabbitmq.host", RABBIT::getHost);
+        registry.add("spring.rabbitmq.port", RABBIT::getAmqpPort);
+        registry.add("spring.rabbitmq.username", RABBIT::getAdminUsername);
+        registry.add("spring.rabbitmq.password", RABBIT::getAdminPassword);
+        // Gửi outbox nhanh và ít lần thử để test chạy nhanh; giá trị thật mặc định 2s / 4 lần.
+        registry.add("auth.messaging.publish-delay", () -> "300ms");
+        registry.add("auth.messaging.publish-initial-delay", () -> "300ms");
+        registry.add("auth.messaging.confirm-timeout", () -> "2s");
+        registry.add("auth.messaging.max-retries", () -> "1");
     }
 
     @LocalServerPort

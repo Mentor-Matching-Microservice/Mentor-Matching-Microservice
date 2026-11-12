@@ -51,13 +51,58 @@ Xác thực của Mentor Matching (MySQL `mm_auth`): đăng ký, xác minh email
   - khi `AUTH_MAIL_ENABLED=false` (mặc định), service **không gửi email** và không ghi token ra log;
   - chỉ khi phát triển local và đặt `AUTH_MAIL_LOG_LINKS=true` thì link mới được ghi ra log; không thể bật đồng thời với SMTP thật.
 
-## 3. Endpoint nội bộ
+## 3. Sự kiện và quản trị tài khoản (#64)
 
-- `POST /internal/accounts/statuses` và `PUT /internal/accounts/{accountId}/mentor-role`, dùng cho mentor-service.
+### Outbox → RabbitMQ
+
+- **Outbox:** `AccountRegistered` và `AccountStatusChanged` được ghi vào bảng `outbox_events` **trong cùng transaction** với thay đổi tài khoản.
+- **Gửi:**
+  - `OutboxPublisher` định kỳ (`AUTH_OUTBOX_PUBLISH_DELAY`, mặc định 2 giây) gửi lên exchange chung `mentor.events` (topic, durable, cùng tham số với các service khác);
+  - gửi **theo thứ tự tạo** và chỉ đánh dấu đã gửi khi broker xác nhận (publisher confirm);
+  - nhiều instance chạy cùng lúc không gửi trùng nhờ `SELECT … FOR UPDATE SKIP LOCKED`.
+- **Broker chết hoặc treo:**
+  - đăng ký và đổi trạng thái vẫn chạy bình thường;
+  - sự kiện nằm lại trong outbox, ghi số lần thử và tên lớp lỗi vào `attempts`/`last_error`;
+  - **sẽ được gửi bù khi broker chạy lại** (at-least-once: consumer chống trùng theo `eventId`). Timeout kết nối và RPC ngắn (5 giây) để không bị treo.
+
+| eventType | Routing key | Payload (dạng phẳng `{eventId, eventType, occurredAt, ...}`) | Ai dùng |
+|---|---|---|---|
+| `AccountRegistered` | `auth.account.registered` | `accountId, email, status, roles` | notification (thư chào mừng), user-service (tạo hồ sơ, #65), stats |
+| `AccountStatusChanged` | `auth.account.status-changed` | `accountId, status, previousStatus, aggregateVersion, reason?` | Các service cần biết tài khoản bị khoá. `aggregateVersion` tăng dần để bỏ qua sự kiện cũ tới muộn |
+
+### API quản trị
+
+`PATCH /api/v1/admin/accounts/{accountId}/status` (chỉ `ROLE_ADMIN`, Bearer access token do auth-service ký), body `{ "status": "ACTIVE" | "LOCKED" | "DISABLED", "reason": "..." }`.
+
+- Chuyển sang `LOCKED`/`DISABLED`:
+  - **thu hồi ngay mọi refresh token**, nên không làm mới được nữa và cũng không đăng nhập lại được;
+  - access token đã cấp vẫn còn hiệu lực tới khi hết hạn (mặc định 15 phút).
+- Mỗi lần đổi thật sự phát `AccountStatusChanged`; đặt lại đúng trạng thái hiện tại thì không có thay đổi và không phát sự kiện.
+- Mã lỗi:
+  - `400` khi trạng thái không hợp lệ (gồm cả `PENDING_VERIFICATION`);
+  - `409` khi admin tự đổi chính mình;
+  - `404` khi tài khoản không tồn tại;
+  - `401`/`403` khi không có token hoặc không phải ADMIN.
+
+### Nhận `MentorApproved`
+
+- **Nguồn:** queue riêng `auth.mentor-events` (+ `.dlx`/`.dead`), bind `mentor.#` trên `mentor.events`.
+- **Xử lý `MentorApproved`:**
+  - trường bắt buộc `mentorUserId` (hoặc `userId`/`accountId`), là UUID của tài khoản;
+  - gán role `MENTOR` **idempotent**: bản ghi `inbox_events` (khoá chính `eventId`) và việc gán role nằm trong cùng transaction, nên nhận trùng sự kiện không lỗi và không nhân đôi role.
+- **Lỗi:**
+  - sự kiện sai định dạng hoặc tài khoản không tồn tại → DLQ, không thử lại;
+  - lỗi tạm thời → thử lại có giới hạn.
+- **Loại khác** trên `mentor.#` (ví dụ `MentorRatingUpdated`) được bỏ qua.
+- **Phụ thuộc:** mentor-service phát `MentorApproved` thuộc #69 (service khác). Endpoint `PUT /internal/accounts/{id}/mentor-role` vẫn còn để gán role đồng bộ.
+
+## 4. Endpoint nội bộ
+
+- `POST /internal/accounts/statuses`, `PUT /internal/accounts/{accountId}/mentor-role` và `GET /internal/v1/accounts/{accountId}/status` (#64: `{userId, status, version}`, không có email).
 - Chỉ bật khi `AUTH_INTERNAL_ACCOUNT_SYNC_ENABLED=true`; cần `Authorization: Bearer <AUTH_INTERNAL_ACCOUNT_SYNC_TOKEN>` (≥ 32 ký tự).
 - Gán role `MENTOR` là **idempotent**: gọi lại không lỗi và không tạo bản ghi trùng.
 
-## 4. Cấu hình
+## 5. Cấu hình
 
 Xem [.env.example](.env.example). Bắt buộc: `DB_PASSWORD`, `AUTH_JWT_AUDIENCE`, `AUTH_JWT_PRIVATE_KEY_PATH` (PKCS#8 PEM, RSA ≥ 2048 bit). Biến mới của #63:
 
@@ -70,22 +115,29 @@ Xem [.env.example](.env.example). Bắt buộc: `DB_PASSWORD`, `AUTH_JWT_AUDIENC
 | `AUTH_MAIL_FROM` | `no-reply@mentor-matching.local` | Người gửi |
 | `AUTH_VERIFY_EMAIL_URL` / `AUTH_RESET_PASSWORD_URL` | `http://localhost:5173/verify-email` / `/reset-password` | Trang frontend nhận `?token=` |
 | `AUTH_MAIL_LOG_LINKS` | `false` | Chỉ cho local: ghi link ra log khi không gửi email |
+| `RABBITMQ_HOST` / `RABBITMQ_PORT` / `RABBITMQ_USERNAME` / `RABBITMQ_PASSWORD` | `localhost` / `5672` / `guest` / `guest` | #64, cùng tên biến với payment-service |
+| `AUTH_MESSAGING_ENABLED` | `true` | `false`: không publish/nhận (outbox vẫn ghi, gửi bù khi bật lại) |
+| `AUTH_EVENTS_QUEUE` / `AUTH_EVENTS_ROUTING_KEYS` | `auth.mentor-events` / `mentor.#` | Queue riêng nhận MentorApproved |
+| `AUTH_OUTBOX_PUBLISH_DELAY` | `2s` | Chu kỳ gửi outbox |
+| `AUTH_EVENTS_CONFIRM_TIMEOUT` | `5s` | Chờ broker xác nhận mỗi sự kiện |
+| `RABBITMQ_CONNECTION_TIMEOUT` / `RABBITMQ_CHANNEL_RPC_TIMEOUT` | `5s` / `5s` | Báo lỗi nhanh khi broker treo |
 
 Role `LEANER`, `MENTOR`, `ADMIN` được Flyway `V2__seed_core_roles.sql` tạo nếu chưa có. `db/seed/accounts.sql` vẫn là dữ liệu mẫu tuỳ chọn.
 
-## 5. Build và test
+## 6. Build và test
 
 ```bash
-./mvnw clean verify    # cần Docker: integration test dùng Testcontainers MySQL 8.4
+./mvnw clean verify    # cần Docker: integration test dùng Testcontainers MySQL 8.4 + RabbitMQ
 ./mvnw test            # chỉ unit test
 ```
 
 | Lớp | Số test | Nội dung |
 |---|---|---|
 | `AccountTokenAndMailConfigTest` | 3 | Token một lần ngẫu nhiên, chỉ lưu hash; giới hạn TTL; link email; không cho bật log link cùng SMTP |
+| `AccountEventsAndAdminIT` | 7 | `AccountRegistered` tới broker qua outbox; **broker tạm dừng thì sự kiện chờ và được gửi bù khi broker chạy lại**; admin khoá tài khoản thu hồi phiên, phát `AccountStatusChanged` (`previousStatus`, `aggregateVersion`, `reason`), đặt lại cùng trạng thái không phát sự kiện, mở khoá thì đăng nhập lại được; phân quyền và kiểm tra dữ liệu (401/403/400/409/404); endpoint nội bộ cần token; `MentorApproved` gửi 2 lần chỉ gán 1 role; sự kiện hỏng hoặc tài khoản lạ vào DLQ, loại khác bị bỏ qua |
 | `AuthFlowsIT` | 12 | JWKS chỉ có public key và kiểm tra được chữ ký và `kid`; đăng ký → xác minh → đăng nhập; token xác minh dùng lại, hết hạn hoặc giả bị từ chối; resend/forgot không lộ email; reset đổi mật khẩu, thu hồi phiên cũ, link dùng một lần, link cũ hoặc hết hạn bị từ chối; POST thiếu hoặc sai Origin bị 403; dùng lại refresh token cũ thu hồi cả họ; tài khoản DISABLED không đăng nhập hay refresh được; gán role MENTOR idempotent |
 
-## 6. Chạy local
+## 7. Chạy local
 
 ```bash
 export DB_PASSWORD=...  AUTH_JWT_AUDIENCE=mentor-matching-api  AUTH_JWT_PRIVATE_KEY_PATH=$PWD/jwt-keys/private.pem
