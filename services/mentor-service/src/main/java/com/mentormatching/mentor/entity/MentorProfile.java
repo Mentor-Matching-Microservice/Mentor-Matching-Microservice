@@ -91,10 +91,34 @@ public class MentorProfile {
     @Column(name = "major")
     private String major;
 
+    @Column(name = "average_rating")
+    private Double averageRating;
+
+    @Column(name = "total_reviews", nullable = false)
+    private Long totalReviews = 0L;
+
+    @Column(name = "rating_version", nullable = false)
+    private Long ratingVersion = 0L;
+
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(name = "meeting_type", length = 50)
     private MeetingType meetingType;
+
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "approval_status", length = 50, nullable = false)
+    private MentorApprovalStatus approvalStatus = MentorApprovalStatus.DRAFT;
+
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
+
+    @Column(name = "approved_by", columnDefinition = "BINARY(16)")
+    private UUID approvedBy;
+
+    @JdbcTypeCode(SqlTypes.TIMESTAMP)
+    @Column(name = "approved_at", columnDefinition = "DATETIME(6)")
+    private Instant approvedAt;
 
     @CreationTimestamp
     @JdbcTypeCode(SqlTypes.TIMESTAMP)

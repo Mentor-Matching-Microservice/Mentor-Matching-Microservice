@@ -19,6 +19,11 @@ public interface MentorProfileRepository extends JpaRepository<MentorProfile, Lo
 
     Optional<MentorProfile> findByUserId(UUID userId);
 
+    /** Khóa hồ sơ để admin review không ghi đè nhau. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from MentorProfile p where p.id = :id")
+    Optional<MentorProfile> findByIdForReview(@Param("id") Long id);
+
     /** Tuần tự hóa các lần thay tập tính cách và điểm nổi bật của cùng mentor. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from MentorProfile p where p.userId = :userId")
@@ -42,4 +47,27 @@ public interface MentorProfileRepository extends JpaRepository<MentorProfile, Lo
             """)
     int applyAccountStatus(@Param("userId") UUID userId, @Param("status") AccountStatus status,
                            @Param("version") long version);
+
+    @Modifying
+    @Query("""
+            update MentorProfile p
+            set p.fullName = :fullName, p.avatarUrl = coalesce(:avatarUrl, p.avatarUrl), p.avatarMediaId = coalesce(:avatarMediaId, p.avatarMediaId)
+            where p.userId = :userId
+            """)
+    int applyUserProfile(@Param("userId") UUID userId, @Param("fullName") String fullName,
+                         @Param("avatarUrl") String avatarUrl, @Param("avatarMediaId") Long avatarMediaId);
+
+    @Modifying
+    @Query("""
+            update MentorProfile p
+            set p.averageRating = :averageRating,
+                p.totalReviews = :totalReviews,
+                p.ratingVersion = :version
+            where p.id = :mentorId
+              and (p.ratingVersion is null or p.ratingVersion < :version)
+            """)
+    int applyMentorRating(@Param("mentorId") Long mentorId,
+                          @Param("averageRating") Double averageRating,
+                          @Param("totalReviews") Long totalReviews,
+                          @Param("version") long version);
 }

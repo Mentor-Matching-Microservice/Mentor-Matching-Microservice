@@ -24,6 +24,10 @@ public interface MentorSubjectRepository extends JpaRepository<MentorSubject, Lo
 
     boolean existsByMentorIdAndSubjectGradeId(Long mentorId, Long subjectGradeId);
 
+    boolean existsBySubjectGradeId(Long subjectGradeId);
+
+    boolean existsBySubjectGradeIdIn(List<Long> subjectGradeIds);
+
     /** Giá thấp nhất của tất cả môn đang hoạt động cho mỗi mentor trong trang. */
     @Query("""
             select s.mentorId as mentorId, min(s.pricePerHour) as minPrice

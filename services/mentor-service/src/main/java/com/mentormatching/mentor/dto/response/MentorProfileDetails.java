@@ -3,10 +3,11 @@ package com.mentormatching.mentor.dto.response;
 import java.time.Instant;
 import java.util.UUID;
 
+import com.mentormatching.mentor.entity.AccountStatus;
 import com.mentormatching.mentor.entity.MeetingType;
+import com.mentormatching.mentor.entity.MentorApprovalStatus;
 import com.mentormatching.mentor.entity.MentorGender;
 import lombok.Builder;
-import com.mentormatching.mentor.entity.AccountStatus;
 
 /** Current mentor profile data owned by mentor-service. */
 @Builder
@@ -29,6 +30,8 @@ public record MentorProfileDetails(
         String education,
         String major,
         MeetingType meetingType,
+        MentorApprovalStatus approvalStatus,
+        String rejectionReason,
         Instant createdAt,
         Instant updatedAt) {
 }

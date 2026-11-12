@@ -1,5 +1,9 @@
 package com.mentormatching.mentor.usecase;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import com.mentormatching.mentor.client.MediaServiceClient;
 import com.mentormatching.mentor.dto.response.AdminMentorVerificationDetailResponse;
 import com.mentormatching.mentor.exception.ApiException;
 import com.mentormatching.mentor.repository.MentorProfileRepository;
@@ -19,11 +23,14 @@ public class GetAdminMentorVerificationDetailUseCase {
 
     private final MentorVerificationRepository mentorVerificationRepository;
     private final MentorProfileRepository mentorProfileRepository;
+    private final MediaServiceClient mediaServiceClient;
 
     public GetAdminMentorVerificationDetailUseCase(MentorVerificationRepository mentorVerificationRepository,
-                                                   MentorProfileRepository mentorProfileRepository) {
+                                                   MentorProfileRepository mentorProfileRepository,
+                                                   MediaServiceClient mediaServiceClient) {
         this.mentorVerificationRepository = mentorVerificationRepository;
         this.mentorProfileRepository = mentorProfileRepository;
+        this.mediaServiceClient = mediaServiceClient;
     }
 
     /**
@@ -43,6 +50,23 @@ public class GetAdminMentorVerificationDetailUseCase {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "MENTOR_PROFILE_NOT_FOUND",
                         "Mentor profile not found."));
 
+        List<String> mediaIds = new ArrayList<>();
+        if (verification.getIdCardFrontMediaId() != null) mediaIds.add(verification.getIdCardFrontMediaId());
+        if (verification.getIdCardBackMediaId() != null) mediaIds.add(verification.getIdCardBackMediaId());
+        if (verification.getSelfieWithIdMediaId() != null) mediaIds.add(verification.getSelfieWithIdMediaId());
+
+        var signedUrls = mediaServiceClient.getPrivateDeliveryUrls(mediaIds);
+
+        String frontUrl = verification.getIdCardFrontMediaId() != null
+                ? signedUrls.getOrDefault(verification.getIdCardFrontMediaId(), verification.getIdCardFrontUrl())
+                : verification.getIdCardFrontUrl();
+        String backUrl = verification.getIdCardBackMediaId() != null
+                ? signedUrls.getOrDefault(verification.getIdCardBackMediaId(), verification.getIdCardBackUrl())
+                : verification.getIdCardBackUrl();
+        String selfieUrl = verification.getSelfieWithIdMediaId() != null
+                ? signedUrls.getOrDefault(verification.getSelfieWithIdMediaId(), verification.getSelfieWithIdUrl())
+                : verification.getSelfieWithIdUrl();
+
         return AdminMentorVerificationDetailResponse.builder()
                 .id(verification.getId())
                 .mentorId(verification.getMentorId())
@@ -50,9 +74,12 @@ public class GetAdminMentorVerificationDetailUseCase {
                 .accountFullName(profile.getFullName())
                 .fullName(verification.getFullName())
                 .idCardNumber(verification.getIdCardNumber())
-                .idCardFrontUrl(verification.getIdCardFrontUrl())
-                .idCardBackUrl(verification.getIdCardBackUrl())
-                .selfieWithIdUrl(verification.getSelfieWithIdUrl())
+                .idCardFrontUrl(frontUrl)
+                .idCardFrontMediaId(verification.getIdCardFrontMediaId())
+                .idCardBackUrl(backUrl)
+                .idCardBackMediaId(verification.getIdCardBackMediaId())
+                .selfieWithIdUrl(selfieUrl)
+                .selfieWithIdMediaId(verification.getSelfieWithIdMediaId())
                 .verificationStatus(verification.getVerificationStatus())
                 .verifiedBy(verification.getVerifiedBy())
                 .verifiedAt(verification.getVerifiedAt())
