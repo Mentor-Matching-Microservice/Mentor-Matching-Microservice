@@ -70,7 +70,7 @@ public class InternalAccountSecurityConfiguration {
                 try { chain.doFilter(request, response); } finally { SecurityContextHolder.clearContext(); }
             }
         };
-        return http.securityMatcher("/internal/accounts/**")
+        return http.securityMatcher("/internal/accounts/**", "/internal/v1/accounts/**")
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .csrf(AbstractHttpConfigurer::disable).cors(AbstractHttpConfigurer::disable)
             .httpBasic(AbstractHttpConfigurer::disable).formLogin(AbstractHttpConfigurer::disable)
@@ -79,7 +79,10 @@ public class InternalAccountSecurityConfiguration {
             .authorizeHttpRequests(a -> a.requestMatchers(org.springframework.http.HttpMethod.POST, "/internal/accounts/statuses")
                     .hasAuthority("ACCOUNT_STATUS_READ")
                     .requestMatchers(org.springframework.http.HttpMethod.PUT, "/internal/accounts/*/mentor-role")
-                    .hasAuthority("MENTOR_ROLE_GRANT").anyRequest().denyAll())
+                    .hasAuthority("MENTOR_ROLE_GRANT")
+                    // #64: trạng thái một tài khoản cho service nội bộ, cùng quyền đọc trạng thái.
+                    .requestMatchers(org.springframework.http.HttpMethod.GET, "/internal/v1/accounts/*/status")
+                    .hasAuthority("ACCOUNT_STATUS_READ").anyRequest().denyAll())
             .exceptionHandling(e -> e.accessDeniedHandler((req, res, ex) -> problems.write(HttpStatus.FORBIDDEN, req, res)))
             .build();
     }
