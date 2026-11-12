@@ -24,13 +24,22 @@ public class GetUserSummaryUseCase {
     }
 
     public UserSummaryResponse execute(UUID userId) {
-        return profiles.findById(userId)
-                .map(p -> UserSummaryResponse.builder()
-                        .userId(p.getUserId().toString())
-                        .fullName(p.getFullName())
-                        .email(p.getEmail())
-                        .phone(p.getPhone())
-                        .build())
+        return profiles.findById(userId).map(GetUserSummaryUseCase::toSummary)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "USER_PROFILE_NOT_FOUND", "User profile not found"));
+    }
+
+    /** Tóm tắt nhiều người dùng; id không tồn tại bị bỏ qua, id trùng chỉ trả một lần. */
+    public java.util.List<UserSummaryResponse> executeAll(java.util.List<UUID> userIds) {
+        return profiles.findAllById(new java.util.LinkedHashSet<>(userIds)).stream().map(GetUserSummaryUseCase::toSummary).toList();
+    }
+
+    private static UserSummaryResponse toSummary(com.mentormatching.user.entity.UserProfile p) {
+        return UserSummaryResponse.builder()
+                .userId(p.getUserId().toString())
+                .fullName(p.getFullName())
+                .email(p.getEmail())
+                .phone(p.getPhone())
+                .userType(p.getUserType())
+                .build();
     }
 }
