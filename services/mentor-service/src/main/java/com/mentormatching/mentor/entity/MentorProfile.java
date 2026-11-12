@@ -91,6 +91,15 @@ public class MentorProfile {
     @Column(name = "major")
     private String major;
 
+    @Column(name = "average_rating")
+    private Double averageRating;
+
+    @Column(name = "total_reviews", nullable = false)
+    private Long totalReviews = 0L;
+
+    @Column(name = "rating_version", nullable = false)
+    private Long ratingVersion = 0L;
+
     @Enumerated(EnumType.STRING)
     @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(name = "meeting_type", length = 50)

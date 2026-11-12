@@ -54,6 +54,8 @@ public class GetMentorDetailUseCase {
                 .education(profile.getEducation())
                 .major(profile.getMajor())
                 .meetingType(profile.getMeetingType())
+                .averageRating(profile.getAverageRating())
+                .totalReviews(profile.getTotalReviews())
                 .createdAt(profile.getCreatedAt())
                 .updatedAt(profile.getUpdatedAt())
                 .build();

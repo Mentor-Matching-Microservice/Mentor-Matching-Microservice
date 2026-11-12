@@ -18,6 +18,7 @@ import com.mentormatching.mentor.repository.MentorProfileRepository;
 import com.mentormatching.mentor.security.ProblemAccessDeniedHandler;
 import com.mentormatching.mentor.security.ProblemAuthenticationEntryPoint;
 import com.mentormatching.mentor.service.ApplyAccountStatusesService;
+import com.mentormatching.mentor.service.ApplyMentorRatingService;
 import com.mentormatching.mentor.service.ApplyUserProfileService;
 import com.mentormatching.mentor.usecase.GetMentorBookingContextUseCase;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -62,6 +64,9 @@ class InternalMentorControllerTest {
     @MockitoBean
     ApplyAccountStatusesService applyAccountStatusesService;
 
+    @MockitoBean
+    ApplyMentorRatingService applyMentorRatingService;
+
     @Test
     void getBookingContext_success() throws Exception {
         MentorBookingContextResponse response = MentorBookingContextResponse.builder()
@@ -73,6 +78,8 @@ class InternalMentorControllerTest {
                 .subjectName("Toán")
                 .gradeName("Lớp 12")
                 .pricePerHour(new BigDecimal("200000.00"))
+                .currency("VND")
+                .eligible(true)
                 .active(true)
                 .build();
 
@@ -84,7 +91,27 @@ class InternalMentorControllerTest {
                 .andExpect(jsonPath("$.mentorId", is(1)))
                 .andExpect(jsonPath("$.mentorUserId", is("123e4567-e89b-12d3-a456-426614174000")))
                 .andExpect(jsonPath("$.mentorName", is("John Doe")))
+                .andExpect(jsonPath("$.currency", is("VND")))
+                .andExpect(jsonPath("$.eligible", is(true)))
                 .andExpect(jsonPath("$.active", is(true)));
+    }
+
+    @Test
+    void updateRating_success() throws Exception {
+        mvc.perform(put("/internal/v1/mentors/{mentorId}/rating", 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "averageRating": 4.75,
+                                    "totalReviews": 12,
+                                    "version": 3
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.message", is("Mentor rating updated successfully")));
+
+        verify(applyMentorRatingService).apply(1L, 4.75, 12L, 3L);
     }
 
     @Test

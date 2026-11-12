@@ -1,6 +1,7 @@
 package com.mentormatching.mentor.repository;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import com.mentormatching.mentor.dto.query.SearchMentorsQuery;
 import com.mentormatching.mentor.entity.*;
@@ -24,7 +25,11 @@ public final class MentorSearchSpecifications {
      * @return Specification dùng cho cả truy vấn dữ liệu và đếm bản ghi
      */
     public static Specification<MentorProfile> matching(SearchMentorsQuery input) {
-        return visible().and(filters(input));
+        return matching(input, null);
+    }
+
+    public static Specification<MentorProfile> matching(SearchMentorsQuery input, List<Long> resolvedSubjectGradeIds) {
+        return visible().and(filters(input, resolvedSubjectGradeIds));
     }
 
     /** Điều kiện công khai dùng chung cho danh sách và trang chi tiết. */
@@ -43,6 +48,7 @@ public final class MentorSearchSpecifications {
                     cb.isTrue(s.get("active")));
 
             return cb.and(
+                    cb.equal(root.get("approvalStatus"), MentorApprovalStatus.APPROVED),
                     cb.equal(root.get("accountStatus"), AccountStatus.ACTIVE),
                     cb.notEqual(cb.trim(root.get("fullName")), ""),
                     cb.notEqual(cb.trim(root.get("avatarUrl")), ""),
@@ -54,7 +60,7 @@ public final class MentorSearchSpecifications {
         };
     }
 
-    private static Specification<MentorProfile> filters(SearchMentorsQuery input) {
+    private static Specification<MentorProfile> filters(SearchMentorsQuery input, List<Long> resolvedSubjectGradeIds) {
         return (root, query, cb) -> {
             var predicates = new ArrayList<Predicate>();
 
@@ -68,49 +74,52 @@ public final class MentorSearchSpecifications {
             if (input.gender() != null) predicates.add(cb.equal(root.get("gender"), input.gender()));
             // MeetingType
             if (input.meetingType() != null) predicates.add(cb.equal(root.get("meetingType"), input.meetingType()));
-            // HomeTown && District
-            if (input.hometownCityId() != null)
-                predicates.add(cb.equal(root.get("hometownCityId"), input.hometownCityId()));
-            if (input.currentDistrictId() != null)
-                predicates.add(cb.equal(root.get("currentDistrictId"), input.currentDistrictId()));
+            // City && District
+            Long cityId = input.hometownCityId() != null ? input.hometownCityId() : input.cityId();
+            if (cityId != null)
+                predicates.add(cb.equal(root.get("hometownCityId"), cityId));
+
+            Long districtId = input.currentDistrictId() != null ? input.currentDistrictId() : input.districtId();
+            if (districtId != null)
+                predicates.add(cb.equal(root.get("currentDistrictId"), districtId));
+
             // YOE
             if (input.minExperienceYears() != null)
                 predicates.add(cb.ge(root.get("experienceYears"), input.minExperienceYears()));
             if (input.maxExperienceYears() != null)
                 predicates.add(cb.le(root.get("experienceYears"), input.maxExperienceYears()));
-            // Subject || Min Price || Max Price
-            if (input.subjectGradeId() != null || input.minPrice() != null || input.maxPrice() != null) {
 
-                //  SELECT * FROM mentor_profile m
-                //  WHERE EXISTS (
-                //      SELECT s.id FROM mentor_subject s
-                //      WHERE s.mentor_id = m.id
-                //      AND s.active = true
-                //      AND s.subject_grade_id = 5
-                //      AND s.price_per_hour >= minPrice
-                //      AND s.price_per_hour <= maxPrice
-                //  )
+            // Subject / SubjectGrade / Price
+            boolean hasSubjectFilter = input.subjectGradeId() != null
+                    || (resolvedSubjectGradeIds != null && (input.subjectId() != null || input.gradeId() != null));
+
+            if (hasSubjectFilter || input.minPrice() != null || input.maxPrice() != null) {
                 var sub = query.subquery(Long.class);
-                var subject = sub.from(MentorSubject.class); // FROM mentor_subject s
+                var subject = sub.from(MentorSubject.class);
                 var checks = new ArrayList<Predicate>();
                 checks.add(cb.equal(subject.get("mentorId"), root.get("id")));
                 checks.add(cb.isTrue(subject.get("active")));
-                if (input.subjectGradeId() != null)
+
+                if (input.subjectGradeId() != null) {
                     checks.add(cb.equal(subject.get("subjectGradeId"), input.subjectGradeId()));
+                } else if (resolvedSubjectGradeIds != null && (input.subjectId() != null || input.gradeId() != null)) {
+                    if (resolvedSubjectGradeIds.isEmpty()) {
+                        checks.add(cb.disjunction());
+                    } else {
+                        checks.add(subject.get("subjectGradeId").in(resolvedSubjectGradeIds));
+                    }
+                }
+
                 if (input.minPrice() != null) checks.add(cb.ge(subject.get("pricePerHour"), input.minPrice()));
                 if (input.maxPrice() != null) checks.add(cb.le(subject.get("pricePerHour"), input.maxPrice()));
+
                 sub.select(subject.get("id")).where(checks.toArray(Predicate[]::new));
                 predicates.add(cb.exists(sub));
             }
+
             // Personality
             if (input.personalityIds() != null) {
                 for (Long id : input.personalityIds()) {
-                    // SQL:
-                    // SELECT * FROM mentor_profile m
-                    //      WHERE EXISTS (
-                    //          SELECT 1 FROM mentor_personalities mp
-                    //          WHERE mp.mentor_id = m.id AND p.personality_option_id = ?
-                    //      )
                     var sub = query.subquery(Long.class);
                     var trait = sub.from(MentorPersonality.class);
                     sub.select(trait.get("id")).where(cb.equal(trait.get("mentorId"), root.get("id")),
@@ -118,6 +127,7 @@ public final class MentorSearchSpecifications {
                     predicates.add(cb.exists(sub));
                 }
             }
+
             // Highlight
             if (input.highlightIds() != null) {
                 for (Long id : input.highlightIds()) {
@@ -128,6 +138,7 @@ public final class MentorSearchSpecifications {
                     predicates.add(cb.exists(sub));
                 }
             }
+
             return cb.and(predicates.toArray(Predicate[]::new));
         };
     }
