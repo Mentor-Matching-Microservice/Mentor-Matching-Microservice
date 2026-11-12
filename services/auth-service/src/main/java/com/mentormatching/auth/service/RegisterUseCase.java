@@ -1,5 +1,7 @@
 package com.mentormatching.auth.service;
 
+import com.mentormatching.auth.messaging.AccountEvents;
+
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Locale;
@@ -34,15 +36,20 @@ public class RegisterUseCase {
     private final AccountRoleRepository accountRoles;
     private final PasswordEncoder passwordEncoder;
     private final Validator validator;
+    private final AccountEmailService emails;
+    private final AccountEvents events;
 
     public RegisterUseCase(AccountRepository accounts, PasswordCredentialRepository credentials,
-                           RoleRepository roles, AccountRoleRepository accountRoles, PasswordEncoder passwordEncoder, Validator validator) {
+                           RoleRepository roles, AccountRoleRepository accountRoles, PasswordEncoder passwordEncoder, Validator validator,
+                           AccountEmailService emails, AccountEvents events) {
         this.accounts = accounts;
         this.credentials = credentials;
         this.roles = roles;
         this.accountRoles = accountRoles;
         this.passwordEncoder = passwordEncoder;
         this.validator = validator;
+        this.emails = emails;
+        this.events = events;
     }
 
     /**
@@ -96,6 +103,12 @@ public class RegisterUseCase {
         assignment.setRole(role);
         assignment.setAssignedAt(now);
         accountRoles.save(assignment);
+
+        // #64: AccountRegistered vào outbox trong CÙNG transaction với tài khoản (notification, user-service nhận).
+        events.accountRegistered(account, java.util.List.of(DEFAULT_ROLE));
+
+        // Tài khoản mới ở PENDING_VERIFICATION: gửi link xác minh email (sau khi commit).
+        emails.issueEmailVerification(account);
 
         return new RegisterResult(account.getId(), account.getStatus());
     }

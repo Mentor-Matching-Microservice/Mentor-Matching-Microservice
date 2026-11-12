@@ -9,7 +9,9 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.Base64;
 
+import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.KeyUse;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import org.springframework.beans.factory.annotation.Value;
@@ -66,9 +68,15 @@ public class TokenConfiguration {
         // Tạo đối tượng public key từ n và e.
         RSAPublicKey publicKey = (RSAPublicKey) factory.generatePublic(publicKeySpec);
 
-        //Gói public key và private key vào một đối tượng
+        //Gói public key và private key vào một đối tượng.
+        // kid = thumbprint SHA-256 của public key (RFC 7638): ổn định với cùng một khóa, đổi khi xoay khóa,
+        // để resource server chọn đúng khóa trong /.well-known/jwks.json.
+        RSAKey withoutId = new RSAKey.Builder(publicKey).build();
         return new RSAKey.Builder(publicKey)
                 .privateKey(privateRsaKey)
+                .keyUse(KeyUse.SIGNATURE)
+                .algorithm(JWSAlgorithm.RS256)
+                .keyID(withoutId.computeThumbprint().toString())
                 .build();
     }
 

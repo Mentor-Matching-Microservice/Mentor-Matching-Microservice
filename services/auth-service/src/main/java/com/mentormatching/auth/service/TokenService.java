@@ -15,6 +15,7 @@ import java.util.UUID;
 import com.mentormatching.auth.entity.Account;
 import com.mentormatching.auth.entity.RefreshToken;
 import com.mentormatching.auth.repository.RefreshTokenRepository;
+import com.nimbusds.jose.jwk.RSAKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -41,18 +42,20 @@ public class TokenService {
     private final Duration accessTtl;
     private final Duration refreshTtl;
     private final SecureRandom random = new SecureRandom();
+    private final String keyId;
 
     /**
      * Khởi tạo service và kiểm tra cấu hình token.
      *
      * @param encoder                bộ ký JWT
      * @param refreshTokenRepository repository lưu refresh token
+     * @param jwtSigningKey          khóa ký (lấy kid)
      * @param issuer                 định danh bên phát hành
      * @param audience               đối tượng nhận token
      * @param accessTtl              thời hạn access token
      * @param refreshTtl             thời hạn refresh token
      */
-    public TokenService(JwtEncoder encoder, RefreshTokenRepository refreshTokenRepository,
+    public TokenService(JwtEncoder encoder, RefreshTokenRepository refreshTokenRepository, RSAKey jwtSigningKey,
                         @Value("${auth.jwt.issuer}") String issuer, @Value("${auth.jwt.audience}") String audience,
                         @Value("${auth.jwt.access-ttl}") Duration accessTtl, @Value("${auth.jwt.refresh-ttl}") Duration refreshTtl) {
 
@@ -68,6 +71,8 @@ public class TokenService {
         this.audience = audience;
         this.accessTtl = accessTtl;
         this.refreshTtl = refreshTtl;
+        // kid trong header để resource server chọn đúng khóa từ /.well-known/jwks.json.
+        this.keyId = jwtSigningKey.getKeyID();
     }
 
     /**
@@ -119,7 +124,7 @@ public class TokenService {
                 .claim("roles", List.copyOf(roles)).build();
 
         // Header chỉ định thuật toán ký JWT là RS256.
-        JwsHeader header = JwsHeader.with(SignatureAlgorithm.RS256).build();
+        JwsHeader header = JwsHeader.with(SignatureAlgorithm.RS256).keyId(keyId).build();
 
         // Encoder lấy private key để ký header + claims
         String accessToken;
