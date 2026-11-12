@@ -19,6 +19,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.when;
@@ -59,6 +60,26 @@ class InternalBookingControllerTest {
                 .andExpect(jsonPath("$.data.bookingId", is(10)))
                 .andExpect(jsonPath("$.data.totalAmount", is(350000.00)))
                 .andExpect(jsonPath("$.data.status", is("CONFIRMED")));
+    }
+
+    @Test
+    void getPaymentContextSupportsUuidPath() throws Exception {
+        UUID uuid = new UUID(0L, 10L);
+        BookingPaymentContextResponse context = BookingPaymentContextResponse.builder()
+                .bookingId(10L)
+                .studentUserId("student-1")
+                .mentorId(5L)
+                .mentorUserId("mentor-1")
+                .totalAmount(new BigDecimal("350000.00"))
+                .status(BookingStatus.CONFIRMED)
+                .build();
+
+        when(bookingService.getPaymentContext(10L)).thenReturn(context);
+
+        mvc.perform(get("/internal/v1/bookings/" + uuid + "/payment-context"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data.bookingId", is(10)));
     }
 
     @Test
