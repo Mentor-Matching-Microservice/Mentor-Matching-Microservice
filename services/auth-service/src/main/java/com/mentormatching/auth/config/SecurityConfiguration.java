@@ -1,5 +1,8 @@
 package com.mentormatching.auth.config;
 
+import com.mentormatching.auth.controller.AccountRecoveryController;
+import com.mentormatching.auth.controller.JwksController;
+
 import com.mentormatching.auth.service.AccountUserDetailsService;
 import com.mentormatching.auth.filter.OriginFilter;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -21,6 +24,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
  */
 @Configuration
 public class SecurityConfiguration {
+
+    /**
+     * Endpoint POST công khai của luồng xác thực. Không dùng cookie phiên nên CSRF được bỏ qua; thay vào đó
+     * {@link OriginFilter} chỉ cho phép trình duyệt từ origin frontend đã cấu hình.
+     */
+    public static final String[] PUBLIC_POST_ENDPOINTS = {
+            "/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/refresh-token", "/api/v1/auth/logout",
+            AccountRecoveryController.VERIFY_EMAIL, AccountRecoveryController.RESEND_VERIFICATION,
+            AccountRecoveryController.FORGOT_PASSWORD, AccountRecoveryController.RESET_PASSWORD
+    };
     /**
      * Tạo bộ mã hóa và kiểm tra mật khẩu bằng BCrypt.
      *
@@ -54,12 +67,11 @@ public class SecurityConfiguration {
                 .cors(cors -> {
                 })
                 .addFilterBefore(originFilter, CsrfFilter.class)
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/v1/auth/register", "/api/v1/auth/login",
-                        "/api/v1/auth/refresh-token", "/api/v1/auth/logout"))
+                .csrf(csrf -> csrf.ignoringRequestMatchers(PUBLIC_POST_ENDPOINTS))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login",
-                                "/api/v1/auth/refresh-token", "/api/v1/auth/logout").permitAll()
+                        .requestMatchers(HttpMethod.POST, PUBLIC_POST_ENDPOINTS).permitAll()
+                        .requestMatchers(HttpMethod.GET, JwksController.PATH).permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .anyRequest().authenticated())
                 .build();

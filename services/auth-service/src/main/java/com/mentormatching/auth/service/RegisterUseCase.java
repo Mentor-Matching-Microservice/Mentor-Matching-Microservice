@@ -34,15 +34,18 @@ public class RegisterUseCase {
     private final AccountRoleRepository accountRoles;
     private final PasswordEncoder passwordEncoder;
     private final Validator validator;
+    private final AccountEmailService emails;
 
     public RegisterUseCase(AccountRepository accounts, PasswordCredentialRepository credentials,
-                           RoleRepository roles, AccountRoleRepository accountRoles, PasswordEncoder passwordEncoder, Validator validator) {
+                           RoleRepository roles, AccountRoleRepository accountRoles, PasswordEncoder passwordEncoder, Validator validator,
+                           AccountEmailService emails) {
         this.accounts = accounts;
         this.credentials = credentials;
         this.roles = roles;
         this.accountRoles = accountRoles;
         this.passwordEncoder = passwordEncoder;
         this.validator = validator;
+        this.emails = emails;
     }
 
     /**
@@ -96,6 +99,9 @@ public class RegisterUseCase {
         assignment.setRole(role);
         assignment.setAssignedAt(now);
         accountRoles.save(assignment);
+
+        // Tài khoản mới ở PENDING_VERIFICATION: gửi link xác minh email (sau khi commit).
+        emails.issueEmailVerification(account);
 
         return new RegisterResult(account.getId(), account.getStatus());
     }

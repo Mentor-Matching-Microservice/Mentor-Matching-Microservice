@@ -1,5 +1,7 @@
 package com.mentormatching.auth.filter;
 
+import com.mentormatching.auth.config.SecurityConfiguration;
+
 import java.io.IOException;
 import java.util.Set;
 import java.util.Arrays;
@@ -22,11 +24,7 @@ public class OriginFilter extends OncePerRequestFilter {
 
     private final Set<String> allowedOrigins;
 
-    private static final Set<String> PATHS = Set.of(
-            "/api/v1/auth/register",
-            "/api/v1/auth/login",
-            "/api/v1/auth/refresh-token", "/api/v1/auth/logout"
-    );
+    private static final Set<String> PATHS = Set.of(SecurityConfiguration.PUBLIC_POST_ENDPOINTS);
 
     public OriginFilter(@Value("${auth.cors.allowed-origins:http://localhost:5173}") String origins) {
         this.allowedOrigins = Arrays.stream(origins.split(",")).map(String::trim)

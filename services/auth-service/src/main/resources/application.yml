@@ -53,6 +53,18 @@ auth:
     private-key-path: ${AUTH_JWT_PRIVATE_KEY_PATH}
   cors:
     allowed-origins: ${AUTH_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  tokens:
+    email-verification-ttl: ${AUTH_EMAIL_VERIFICATION_TTL:24h}
+    password-reset-ttl: ${AUTH_PASSWORD_RESET_TTL:30m}
+    resend-cooldown: ${AUTH_EMAIL_RESEND_COOLDOWN:60s}
+  mail:
+    # false: không gửi email (chỉ ghi log); true: gửi qua SMTP cấu hình bằng SPRING_MAIL_HOST/PORT/USERNAME/PASSWORD.
+    enabled: ${AUTH_MAIL_ENABLED:false}
+    from: ${AUTH_MAIL_FROM:no-reply@mentor-matching.local}
+    verify-email-url: ${AUTH_VERIFY_EMAIL_URL:http://localhost:5173/verify-email}
+    reset-password-url: ${AUTH_RESET_PASSWORD_URL:http://localhost:5173/reset-password}
+    # CHỈ cho phát triển local khi enabled=false: ghi link (chứa token) ra log.
+    log-links: ${AUTH_MAIL_LOG_LINKS:false}
   cookie:
     path: ${AUTH_COOKIE_PATH:/api/v1/auth}
     secure: ${AUTH_COOKIE_SECURE:false}
