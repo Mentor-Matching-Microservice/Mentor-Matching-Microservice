@@ -35,6 +35,8 @@ public abstract class UserIntegrationTestSupport {
     public static final String EXCHANGE = "mentor.events";
     protected static final JsonMapper JSON = JsonMapper.builder().build();
     protected static final TestJwtKeys KEYS = TestJwtKeys.trusted();
+    /** auth-service giả cho PATCH trạng thái (#66). */
+    protected static final FakeAuthService AUTH = new FakeAuthService();
 
     protected static final MySQLContainer MYSQL = new MySQLContainer("mysql:8.4").withDatabaseName("mm_user");
     protected static final RabbitMQContainer RABBIT = new RabbitMQContainer("rabbitmq:4.1-alpine");
@@ -57,6 +59,8 @@ public abstract class UserIntegrationTestSupport {
         registry.add("user.jwt.issuer", () -> TestJwtKeys.ISSUER);
         registry.add("user.jwt.audience", () -> TestJwtKeys.AUDIENCE);
         registry.add("user.messaging.max-retries", () -> "1");
+        registry.add("user.auth.base-url", AUTH::baseUrl);
+        registry.add("user.auth.timeout", () -> "3s");
     }
 
     @LocalServerPort
