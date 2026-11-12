@@ -45,6 +45,9 @@ mentor:
     enabled: ${MENTOR_ACCOUNT_SYNC_ENABLED:false}
     base-url: ${MENTOR_ACCOUNT_SYNC_BASE_URL:}
     token: ${MENTOR_ACCOUNT_SYNC_TOKEN:}
+  media-service:
+    base-url: ${MEDIA_SERVICE_URL:http://localhost:8088}
+    token: ${MENTOR_MEDIA_SERVICE_TOKEN:}
   jwt:
     issuer: ${AUTH_JWT_ISSUER:auth-service}
     audience: ${AUTH_JWT_AUDIENCE}

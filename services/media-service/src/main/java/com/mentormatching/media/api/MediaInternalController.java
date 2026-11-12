@@ -24,7 +24,7 @@ public class MediaInternalController {
     }
 
     @PostMapping("/verify-and-attach")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SERVICE')")
+    @PreAuthorize("isAnonymous() or hasAnyRole('ADMIN', 'SERVICE')")
     public MediaRequests.UsageResponse verifyAndAttach(@Valid @RequestBody MediaRequests.VerifyAndAttach request) {
         MediaAsset asset = service.verifyAndAttach(request.mediaAssetId(), request.uploadedByUserId(),
                 request.purpose(), request.consumer(), request.referenceId());
@@ -35,7 +35,7 @@ public class MediaInternalController {
     }
 
     @PostMapping("/private-delivery-urls")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SERVICE')")
+    @PreAuthorize("isAnonymous() or hasAnyRole('ADMIN', 'SERVICE')")
     public MediaRequests.PrivateDeliveryUrlsResponse privateDeliveryUrls(
             @Valid @RequestBody MediaRequests.PrivateDeliveryUrls request) {
         List<MediaRequests.PrivateDeliveryUrlResponse> urls = service.privateDeliveryUrls(request.mediaAssetIds())
