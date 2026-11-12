@@ -16,6 +16,10 @@ import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.*;
+import com.mentormatching.user.config.CorsConfig;
+import com.mentormatching.user.config.SecurityConfiguration;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import com.mentormatching.user.security.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -26,9 +30,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(controllers = {ProblemContractTest.Endpoints.class, ProblemErrorController.class})
 @Import({ProblemContractTest.Endpoints.class, GlobalExceptionHandler.class, ProblemResponses.class, RequestIdFilter.class,
-        SecurityConfiguration.class, ProblemAuthenticationEntryPoint.class, ProblemAccessDeniedHandler.class})
+        SecurityConfiguration.class, CorsConfig.class, ProblemAuthenticationEntryPoint.class, ProblemAccessDeniedHandler.class})
 class ProblemContractTest {
     @Autowired MockMvc mvc;
+    /** SecurityConfiguration cần JwtDecoder; test này dùng jwt() của spring-security-test nên không giải mã thật. */
+    @MockitoBean JwtDecoder jwtDecoder;
 
     @RestController
     static class Endpoints {
@@ -116,17 +122,17 @@ class ProblemContractTest {
         mvc.perform(get("/test/ok").accept(MediaType.TEXT_HTML))
             .andExpect(status().isUnauthorized())
             .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-            .andExpect(header().string("WWW-Authenticate", startsWith("Basic ")))
+            // Bearer JWT từ 2026-11-02 (trước đó HTTP Basic).
+            .andExpect(header().string("WWW-Authenticate", startsWith("Bearer")))
             .andExpect(header().doesNotExist("Location"))
             .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
     }
 
-    @Test void csrfFailureReturnsSecurityProblem() throws Exception {
-        mvc.perform(post("/test/validation").with(user("learner"))
+    /** API stateless chỉ nhận Bearer trong header (không cookie) nên CSRF tắt có chủ đích: POST không cần CSRF token. */
+    @Test void statelessBearerApiDoesNotRequireCsrfToken() throws Exception {
+        mvc.perform(post("/test/validation").with(jwt())
                 .contentType(MediaType.APPLICATION_JSON).content("{\"email\":\"person@example.com\"}"))
-            .andExpect(status().isForbidden())
-            .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-            .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+            .andExpect(status().isOk());
     }
 
     @Test void controllerAccessDeniedIs403Not500() throws Exception {

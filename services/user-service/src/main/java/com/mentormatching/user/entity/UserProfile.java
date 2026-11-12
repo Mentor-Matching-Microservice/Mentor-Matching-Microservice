@@ -30,6 +30,10 @@ public class UserProfile {
     @Column(name = "user_id", nullable = false, updatable = false, columnDefinition = "BINARY(16)")
     private UUID userId;
 
+    /** Bản sao email đăng nhập lấy từ sự kiện AccountRegistered của auth-service (auth là nguồn gốc). */
+    @Column(name = "email", length = 254)
+    private String email;
+
     @Column(name = "full_name", length = 255)
     private String fullName;
 
@@ -43,6 +47,28 @@ public class UserProfile {
     @JdbcTypeCode(SqlTypes.VARCHAR)
     @Column(name = "user_type", length = 50)
     private UserType userType;
+
+    /** Bản sao trạng thái tài khoản (auth-service sở hữu), cập nhật từ AccountRegistered / AccountStatusChanged. */
+    @Column(name = "account_status", length = 32)
+    private String accountStatus;
+
+    /** aggregateVersion của sự kiện trạng thái đã áp dụng gần nhất (bỏ qua sự kiện cũ tới muộn). */
+    @Column(name = "account_status_version")
+    private Long accountStatusVersion;
+
+    /**
+     * Áp dụng trạng thái tài khoản nếu mới hơn bản đang có.
+     *
+     * @return true nếu đã cập nhật
+     */
+    public boolean applyAccountStatus(String status, long aggregateVersion) {
+        if (accountStatusVersion != null && aggregateVersion <= accountStatusVersion) {
+            return false;
+        }
+        this.accountStatus = status;
+        this.accountStatusVersion = aggregateVersion;
+        return true;
+    }
 
     @CreationTimestamp
     @JdbcTypeCode(SqlTypes.TIMESTAMP)
