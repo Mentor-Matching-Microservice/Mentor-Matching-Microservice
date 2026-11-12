@@ -17,6 +17,15 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    publisher-confirm-type: correlated
+    connection-timeout: ${RABBITMQ_CONNECTION_TIMEOUT:5s}
+    channel-rpc-timeout: ${RABBITMQ_CHANNEL_RPC_TIMEOUT:5s}
+    requested-heartbeat: ${RABBITMQ_HEARTBEAT:10s}
 
 eureka:
   client:
@@ -41,6 +50,15 @@ springdoc:
     enabled: ${API_DOCS_ENABLED:false}
 
 mentor:
+  messaging:
+    enabled: ${MENTOR_MESSAGING_ENABLED:true}
+    exchange: ${MENTOR_EVENTS_EXCHANGE:mentor.events}
+    rating-queue: ${MENTOR_RATING_QUEUE:mentor.rating-events}
+    rating-routing-key: ${MENTOR_RATING_ROUTING_KEY:mentor.rating}
+    approved-routing-key: ${MENTOR_APPROVED_ROUTING_KEY:mentor.approved}
+    rejected-routing-key: ${MENTOR_REJECTED_ROUTING_KEY:mentor.rejected}
+    confirm-timeout: ${MENTOR_CONFIRM_TIMEOUT:5s}
+    publish-delay: ${MENTOR_OUTBOX_PUBLISH_DELAY:2s}
   account-sync:
     enabled: ${MENTOR_ACCOUNT_SYNC_ENABLED:false}
     base-url: ${MENTOR_ACCOUNT_SYNC_BASE_URL:}
