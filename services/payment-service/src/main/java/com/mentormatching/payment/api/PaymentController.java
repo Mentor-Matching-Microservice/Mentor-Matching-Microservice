@@ -36,9 +36,10 @@ public class PaymentController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public PaymentResponse create(@AuthenticationPrincipal Jwt jwt,
-                                  @RequestHeader("Idempotency-Key") String key,
+                                  @RequestHeader(value = "Idempotency-Key", required = false) String key,
                                   @Valid @RequestBody CreateRequest request) {
-        return PaymentResponse.from(service.create(subject(jwt), request.bookingId(), key, jwt.getTokenValue()));
+        String effectiveKey = (key != null && !key.isBlank()) ? key : UUID.randomUUID().toString();
+        return PaymentResponse.from(service.create(subject(jwt), request.bookingId(), effectiveKey, jwt.getTokenValue()));
     }
 
     @GetMapping("/me")

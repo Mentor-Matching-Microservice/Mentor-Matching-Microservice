@@ -21,7 +21,7 @@ public class GatewayCorsConfig {
         cors.setAllowedOrigins(Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim).toList());
         cors.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        cors.setAllowedHeaders(java.util.List.of("Authorization", "Content-Type", "X-Request-Id", "X-Correlation-Id"));
+        cors.setAllowedHeaders(java.util.List.of("Authorization", "Content-Type", "X-Request-Id", "X-Correlation-Id", "Idempotency-Key", "Accept", "Origin", "X-Requested-With"));
         cors.setAllowCredentials(true);
         var source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", cors);
