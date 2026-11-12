@@ -13,6 +13,7 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mentormatching.payment.api.PaymentModels;
 import com.mentormatching.payment.api.PaymentModels.BookingPaymentContext;
 import com.mentormatching.payment.config.PaymentProperties;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,7 +28,7 @@ class BookingPaymentSummaryClientTest {
 
     private MockRestServiceServer mockServer;
     private BookingPaymentSummaryClient client;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
     @BeforeEach
     void setUp() {
@@ -96,5 +97,40 @@ class BookingPaymentSummaryClientTest {
                 .hasMessageContaining("Booking not found");
 
         mockServer.verify();
+    }
+
+    @Test
+    void bookingLifecycleEvent_deserializesNumericBookingIdString() throws Exception {
+        String json = """
+                {
+                    "eventId": "evt-123",
+                    "eventType": "BookingCancelled",
+                    "occurredAt": "2026-11-12T04:58:00Z",
+                    "bookingId": "10",
+                    "reason": "Cancelled by student"
+                }
+                """;
+
+        BookingLifecycleEvent event = objectMapper.readValue(json, BookingLifecycleEvent.class);
+        assertThat(event.eventId()).isEqualTo("evt-123");
+        assertThat(event.eventType()).isEqualTo("BookingCancelled");
+        assertThat(event.bookingId()).isEqualTo(new UUID(0L, 10L));
+        assertThat(event.reason()).isEqualTo("Cancelled by student");
+    }
+
+    @Test
+    void createRequest_deserializesNumericAndUuidBookingId() throws Exception {
+        String jsonNumeric = "{\"bookingId\": 10}";
+        PaymentModels.CreateRequest req1 = objectMapper.readValue(jsonNumeric, PaymentModels.CreateRequest.class);
+        assertThat(req1.bookingId()).isEqualTo(new UUID(0L, 10L));
+
+        String jsonNumericString = "{\"bookingId\": \"10\"}";
+        PaymentModels.CreateRequest req2 = objectMapper.readValue(jsonNumericString, PaymentModels.CreateRequest.class);
+        assertThat(req2.bookingId()).isEqualTo(new UUID(0L, 10L));
+
+        UUID randomUuid = UUID.randomUUID();
+        String jsonUuid = "{\"bookingId\": \"" + randomUuid + "\"}";
+        PaymentModels.CreateRequest req3 = objectMapper.readValue(jsonUuid, PaymentModels.CreateRequest.class);
+        assertThat(req3.bookingId()).isEqualTo(randomUuid);
     }
 }
