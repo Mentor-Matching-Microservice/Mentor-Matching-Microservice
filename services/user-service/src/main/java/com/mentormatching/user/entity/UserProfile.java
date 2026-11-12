@@ -48,6 +48,28 @@ public class UserProfile {
     @Column(name = "user_type", length = 50)
     private UserType userType;
 
+    /** Bản sao trạng thái tài khoản (auth-service sở hữu), cập nhật từ AccountRegistered / AccountStatusChanged. */
+    @Column(name = "account_status", length = 32)
+    private String accountStatus;
+
+    /** aggregateVersion của sự kiện trạng thái đã áp dụng gần nhất (bỏ qua sự kiện cũ tới muộn). */
+    @Column(name = "account_status_version")
+    private Long accountStatusVersion;
+
+    /**
+     * Áp dụng trạng thái tài khoản nếu mới hơn bản đang có.
+     *
+     * @return true nếu đã cập nhật
+     */
+    public boolean applyAccountStatus(String status, long aggregateVersion) {
+        if (accountStatusVersion != null && aggregateVersion <= accountStatusVersion) {
+            return false;
+        }
+        this.accountStatus = status;
+        this.accountStatusVersion = aggregateVersion;
+        return true;
+    }
+
     @CreationTimestamp
     @JdbcTypeCode(SqlTypes.TIMESTAMP)
     @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "DATETIME(6)")

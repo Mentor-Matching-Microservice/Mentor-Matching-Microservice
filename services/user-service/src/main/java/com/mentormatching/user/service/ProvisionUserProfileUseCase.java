@@ -41,10 +41,15 @@ public class ProvisionUserProfileUseCase {
     }
 
     public Outcome provision(String eventId, String eventType, UUID userId, String email) {
+        return provision(eventId, eventType, userId, email, null);
+    }
+
+    /** @param status trạng thái tài khoản lúc đăng ký (thường PENDING_VERIFICATION), áp dụng với version 0 */
+    public Outcome provision(String eventId, String eventType, UUID userId, String email, String status) {
         String normalizedEmail = email == null ? null : email.trim().toLowerCase(Locale.ROOT);
         for (int attempt = 1; ; attempt++) {
             try {
-                return transaction.execute(status -> apply(eventId, eventType, userId, normalizedEmail));
+                return transaction.execute(tx -> apply(eventId, eventType, userId, normalizedEmail, status));
             } catch (DataIntegrityViolationException conflict) {
                 if (inbox.existsById(eventId)) {
                     return Outcome.DUPLICATE; // một lần giao song song của cùng sự kiện đã commit trước
@@ -57,7 +62,7 @@ public class ProvisionUserProfileUseCase {
         }
     }
 
-    private Outcome apply(String eventId, String eventType, UUID userId, String email) {
+    private Outcome apply(String eventId, String eventType, UUID userId, String email, String status) {
         if (inbox.existsById(eventId)) {
             return Outcome.DUPLICATE;
         }
@@ -74,6 +79,9 @@ public class ProvisionUserProfileUseCase {
                 profile.setEmail(email);
             }
             outcome = Outcome.UPDATED;
+        }
+        if (status != null) {
+            profile.applyAccountStatus(status, 0);
         }
         profiles.saveAndFlush(profile);
         return outcome;
