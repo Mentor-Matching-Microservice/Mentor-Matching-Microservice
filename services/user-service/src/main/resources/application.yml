@@ -1,0 +1,66 @@
+server:
+  port: ${SERVER_PORT:8082}
+
+spring:
+  application:
+    name: user-service
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/mm_user}
+    username: ${DB_USERNAME:mm_user}
+    password: ${DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate.jdbc.time_zone: UTC
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  rabbitmq:
+    # Cùng tên biến môi trường với payment-service.
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+eureka:
+  client:
+    # Enable once discovery-service exists.
+    enabled: ${EUREKA_ENABLED:false}
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED:false}
+
+user:
+  jwt:
+    issuer: ${AUTH_JWT_ISSUER:auth-service}
+    audience: ${AUTH_JWT_AUDIENCE}
+    public-key-location: ${AUTH_JWT_PUBLIC_KEY_LOCATION}
+  cors:
+    allowed-origins: ${USER_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  auth:
+    # #66: PATCH /api/v1/admin/users/{id}/status được chuyển cho API admin của auth-service (chủ sở hữu trạng thái).
+    base-url: ${AUTH_SERVICE_URL:http://localhost:8081}
+    timeout: ${AUTH_SERVICE_TIMEOUT:5s}
+  messaging:
+    # false: không nhận sự kiện (hồ sơ vẫn tạo được qua PUT /api/v1/users/me).
+    enabled: ${USER_MESSAGING_ENABLED:true}
+    exchange: ${USER_EVENTS_EXCHANGE:mentor.events}
+    queue: ${USER_EVENTS_QUEUE:user.account-events}
+    routing-keys: ${USER_EVENTS_ROUTING_KEYS:auth.account.#}
+    max-retries: ${USER_EVENTS_MAX_RETRIES:4}

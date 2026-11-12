@@ -1,0 +1,74 @@
+server:
+  port: ${SERVER_PORT:8083}
+
+spring:
+  application:
+    name: mentor-service
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/mm_mentor?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true}
+    username: ${DB_USERNAME:mm_mentor}
+    password: ${DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate.jdbc.time_zone: UTC
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    publisher-confirm-type: correlated
+    connection-timeout: ${RABBITMQ_CONNECTION_TIMEOUT:5s}
+    channel-rpc-timeout: ${RABBITMQ_CHANNEL_RPC_TIMEOUT:5s}
+    requested-heartbeat: ${RABBITMQ_HEARTBEAT:10s}
+
+eureka:
+  client:
+    # Enable once discovery-service exists.
+    enabled: ${EUREKA_ENABLED:false}
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED:false}
+
+mentor:
+  messaging:
+    enabled: ${MENTOR_MESSAGING_ENABLED:true}
+    exchange: ${MENTOR_EVENTS_EXCHANGE:mentor.events}
+    rating-queue: ${MENTOR_RATING_QUEUE:mentor.rating-events}
+    rating-routing-key: ${MENTOR_RATING_ROUTING_KEY:mentor.rating}
+    approved-routing-key: ${MENTOR_APPROVED_ROUTING_KEY:mentor.approved}
+    rejected-routing-key: ${MENTOR_REJECTED_ROUTING_KEY:mentor.rejected}
+    confirm-timeout: ${MENTOR_CONFIRM_TIMEOUT:5s}
+    publish-delay: ${MENTOR_OUTBOX_PUBLISH_DELAY:2s}
+  account-sync:
+    enabled: ${MENTOR_ACCOUNT_SYNC_ENABLED:false}
+    base-url: ${MENTOR_ACCOUNT_SYNC_BASE_URL:}
+    token: ${MENTOR_ACCOUNT_SYNC_TOKEN:}
+  media-service:
+    base-url: ${MEDIA_SERVICE_URL:http://localhost:8088}
+    token: ${MENTOR_MEDIA_SERVICE_TOKEN:}
+  jwt:
+    issuer: ${AUTH_JWT_ISSUER:auth-service}
+    audience: ${AUTH_JWT_AUDIENCE}
+    public-key-location: ${AUTH_JWT_PUBLIC_KEY_LOCATION}
+  cors:
+    allowed-origins: ${MENTOR_CORS_ALLOWED_ORIGINS:http://localhost:5173}

@@ -1,0 +1,190 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: api-gateway-service
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
+  cloud:
+    gateway:
+      server:
+        webmvc:
+          websocket:
+            allowed-origins: ${FRONTEND_BASE_URL:http://localhost:5173}
+          routes:
+            - id: auth-service
+              uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/v1/auth/**
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - id: user-service
+              uri: ${USER_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/v1/users/**
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - id: user-service-admin
+              uri: ${USER_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/v1/admin/users/**
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - id: booking-service
+              uri: ${BOOKING_SERVICE_URL:http://localhost:8084}
+              predicates:
+                - Path=/api/v1/bookings/**,/api/v1/scheduling/**,/api/v1/mentors/*/calendar-booking,/api/v1/mentors/*/availabilities
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - id: mentor-service
+              uri: ${MENTOR_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/v1/mentors/**
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - id: mentor-service-admin
+              uri: ${MENTOR_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/v1/admin/mentors/**,/api/v1/admin/mentor-verifications/**
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - id: mentor-service-catalog
+              uri: ${MENTOR_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/v1/catalog/**,/api/v1/locations/**,/api/v1/admin/catalog/**
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - id: payment-service
+              uri: ${PAYMENT_SERVICE_URL:http://localhost:8085}
+              predicates:
+                - Path=/api/v1/payments/**
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - id: review-service
+              uri: ${REVIEW_SERVICE_URL:http://localhost:8086}
+              predicates:
+                - Path=/api/v1/reviews/**
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - id: media-service
+              uri: ${MEDIA_SERVICE_URL:http://localhost:8088}
+              predicates:
+                - Path=/api/v1/media/**
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - id: notification-service
+              uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8089}
+              predicates:
+                - Path=/api/v1/notifications/**
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - id: notification-service-websocket
+              uri: ${NOTIFICATION_SERVICE_WS_URL:http://localhost:8089}
+              predicates:
+                - Path=/ws/notifications/**
+            - id: stats-service
+              uri: ${STATS_SERVICE_URL:http://localhost:8090}
+              predicates:
+                - Path=/api/v1/admin/stats/**
+              filters:
+                - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - id: auth-service-openapi
+              uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/docs/auth/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: user-service-openapi
+              uri: ${USER_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/docs/users/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: mentor-service-openapi
+              uri: ${MENTOR_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/docs/mentors/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: booking-service-openapi
+              uri: ${BOOKING_SERVICE_URL:http://localhost:8084}
+              predicates:
+                - Path=/docs/bookings/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: payment-service-openapi
+              uri: ${PAYMENT_SERVICE_URL:http://localhost:8085}
+              predicates:
+                - Path=/docs/payments/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: review-service-openapi
+              uri: ${REVIEW_SERVICE_URL:http://localhost:8086}
+              predicates:
+                - Path=/docs/reviews/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: media-service-openapi
+              uri: ${MEDIA_SERVICE_URL:http://localhost:8088}
+              predicates:
+                - Path=/docs/media/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: notification-service-openapi
+              uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8089}
+              predicates:
+                - Path=/docs/notifications/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+            - id: stats-service-openapi
+              uri: ${STATS_SERVICE_URL:http://localhost:8090}
+              predicates:
+                - Path=/docs/stats/v3/api-docs
+              filters:
+                - SetPath=/v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+gateway:
+  cors:
+    allowed-origins: ${FRONTEND_BASE_URL:${GATEWAY_CORS_ALLOWED_ORIGINS:http://localhost:5173}}
+  rate-limit:
+    enabled: ${GATEWAY_RATE_LIMIT_ENABLED:true}
+    requests: ${GATEWAY_RATE_LIMIT_REQUESTS:60}
+    window: ${GATEWAY_RATE_LIMIT_WINDOW:PT1M}
+    key-prefix: ${GATEWAY_RATE_LIMIT_KEY_PREFIX:mentor-gateway:rate-limit}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: auth-service
+        url: /docs/auth/v3/api-docs
+      - name: user-service
+        url: /docs/users/v3/api-docs
+      - name: mentor-service
+        url: /docs/mentors/v3/api-docs
+      - name: booking-service
+        url: /docs/bookings/v3/api-docs
+      - name: payment-service
+        url: /docs/payments/v3/api-docs
+      - name: review-service
+        url: /docs/reviews/v3/api-docs
+      - name: media-service
+        url: /docs/media/v3/api-docs
+      - name: notification-service
+        url: /docs/notifications/v3/api-docs
+      - name: stats-service
+        url: /docs/stats/v3/api-docs

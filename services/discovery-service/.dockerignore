@@ -1,0 +1,8 @@
+target/
+.idea/
+.vscode/
+*.iml
+.env
+.env.*
+postman/
+README.md

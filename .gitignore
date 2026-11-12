@@ -1,0 +1,15 @@
+/target/
+**/target/
+.idea/
+**/.idea/
+*.iml
+.DS_Store
+Mentor-Matching/
+node_modules/
+**/node_modules/
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+!*.pem.example

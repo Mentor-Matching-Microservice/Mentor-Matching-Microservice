@@ -1,0 +1,67 @@
+server:
+  port: ${SERVER_PORT:8090}
+
+spring:
+  application:
+    name: stats-service
+  mongodb:
+    # MongoDB phải chạy dạng replica set (transaction: chống trùng + $inc nguyên tử). Thông tin đăng nhập nằm trong URI.
+    uri: ${MONGODB_URI:mongodb://localhost:27017/mm_stats?replicaSet=rs0}
+  data:
+    mongodb:
+      auto-index-creation: ${MONGODB_AUTO_INDEX_CREATION:true}
+      representation:
+        # Tiền (doanh thu, hoàn tiền) lưu Decimal128, không lưu dạng chuỗi.
+        big-decimal: decimal128
+  rabbitmq:
+    # Cùng tên biến môi trường với payment-service.
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+eureka:
+  client:
+    enabled: ${EUREKA_ENABLED:false}
+    service-url:
+      # discovery-service yêu cầu HTTP Basic: http://<user>:<password>@<host>:8761/eureka/
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED:false}
+
+logging:
+  level:
+    # Eureka client ghi URL registry (kèm user:password) ở mức INFO khi lỗi kết nối; hạ xuống WARN.
+    com.netflix.discovery.shared.transport.decorator.RedirectingEurekaHttpClient: WARN
+
+stats:
+  zone: ${STATS_ZONE:Asia/Ho_Chi_Minh}
+  currency: ${STATS_CURRENCY:VND}
+  jwt:
+    issuer: ${AUTH_JWT_ISSUER:auth-service}
+    audience: ${AUTH_JWT_AUDIENCE:}
+    public-key-location: ${AUTH_JWT_PUBLIC_KEY_LOCATION:}
+  cors:
+    allowed-origins: ${STATS_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  messaging:
+    enabled: ${STATS_MESSAGING_ENABLED:true}
+    # Exchange dùng chung của hệ thống; queue và dead-letter queue là của riêng stats-service.
+    exchange: ${STATS_EVENTS_EXCHANGE:mentor.events}
+    queue: ${STATS_EVENTS_QUEUE:stats.domain-events}
+    routing-keys: ${STATS_EVENTS_ROUTING_KEYS:booking.#,payment.#,auth.#,mentor.#}
+    max-retries: ${STATS_EVENTS_MAX_RETRIES:4}

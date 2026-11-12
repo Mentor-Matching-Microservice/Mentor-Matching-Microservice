@@ -1,0 +1,52 @@
+server:
+  port: ${SERVER_PORT:8084}
+
+spring:
+  application:
+    name: booking-service
+  datasource:
+    url: ${DB_URL:jdbc:sqlserver://localhost:1433;databaseName=mm_booking;encrypt=true;trustServerCertificate=true}
+    username: ${DB_USERNAME:sa}
+    password: ${DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+eureka:
+  client:
+    # Enable once discovery-service exists.
+    enabled: ${EUREKA_ENABLED:false}
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED:false}
+
+booking:
+  messaging:
+    enabled: ${BOOKING_MESSAGING_ENABLED:true}
+    exchange: ${BOOKING_MESSAGING_EXCHANGE:mentor.events}
+    payment-events-queue: ${BOOKING_PAYMENT_EVENTS_QUEUE:booking.payment-events}
+    booking-lifecycle-routing-key: ${BOOKING_LIFECYCLE_ROUTING_KEY:booking.lifecycle}
+  jwt:
+    issuer: ${AUTH_JWT_ISSUER:auth-service}
+    audience: ${AUTH_JWT_AUDIENCE}
+    public-key-location: ${AUTH_JWT_PUBLIC_KEY_LOCATION}
+  cors:
+    allowed-origins: ${BOOKING_CORS_ALLOWED_ORIGINS:http://localhost:5173}

@@ -1,0 +1,98 @@
+{
+  "info": {
+    "_postman_id": "8b6c1f42-3d5e-4a7b-9c01-5e2f7a9d3c46",
+    "name": "stats-service",
+    "description": "Thống kê Admin Dashboard (#82). Biến môi trường: baseUrl, adminToken (access token có role ADMIN), userToken (access token không phải ADMIN).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Public probe",
+      "item": [
+        {
+          "name": "Health",
+          "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{baseUrl}}/actuator/health" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 200 UP', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().status).to.eql('UP'); });"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "2. Access control",
+      "item": [
+        {
+          "name": "No token → 401",
+          "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{baseUrl}}/api/v1/admin/stats/overview" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 401', () => pm.response.to.have.status(401));",
+            "pm.test('AUTHENTICATION_REQUIRED', () => pm.expect(pm.response.json().code).to.eql('AUTHENTICATION_REQUIRED'));"
+          ] } }]
+        },
+        {
+          "name": "Non-admin → 403",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{userToken}}", "type": "string" }] },
+            "method": "GET", "url": "{{baseUrl}}/api/v1/admin/stats/overview"
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 403', () => pm.response.to.have.status(403));",
+            "pm.test('ACCESS_DENIED', () => pm.expect(pm.response.json().code).to.eql('ACCESS_DENIED'));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "3. Admin statistics",
+      "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+      "item": [
+        {
+          "name": "Overview (default: last 30 days)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/admin/stats/overview" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 200', () => pm.response.to.have.status(200));",
+            "const d = pm.response.json().data;",
+            "pm.test('legacy fields present', () => ['from','to','newUsersCount','newMentorsCount','totalBookings','completedBookings','completionRate','totalRevenue'].forEach(k => pm.expect(d).to.have.property(k)));",
+            "pm.test('partialData flag + unavailableMetrics', () => { pm.expect(d.partialData).to.be.a('boolean'); pm.expect(d.unavailableMetrics).to.be.an('array'); });"
+          ] } }]
+        },
+        {
+          "name": "Overview for a range",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/admin/stats/overview?from=2026-11-01&to=2026-11-10" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 200', () => pm.response.to.have.status(200));",
+            "const d = pm.response.json().data;",
+            "pm.test('range echoed', () => { pm.expect(d.from).to.eql('2026-11-01'); pm.expect(d.to).to.eql('2026-11-10'); });",
+            "pm.test('net = revenue - refunded', () => pm.expect(Number(d.netRevenue)).to.eql(Number(d.totalRevenue) - Number(d.totalRefunded)));"
+          ] } }]
+        },
+        {
+          "name": "Timeseries is zero-filled per day",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/admin/stats/timeseries?from=2026-11-01&to=2026-11-10" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 200', () => pm.response.to.have.status(200));",
+            "const d = pm.response.json().data;",
+            "pm.test('10 points, one per day', () => { pm.expect(d.points).to.have.length(10); pm.expect(d.points[0].date).to.eql('2026-11-01'); pm.expect(d.points[9].date).to.eql('2026-11-10'); });",
+            "pm.test('every point has numbers', () => d.points.forEach(p => { pm.expect(p).to.have.property('bookingsCount'); pm.expect(p).to.have.property('revenue'); }));"
+          ] } }]
+        },
+        {
+          "name": "from > to → 400",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/admin/stats/overview?from=2026-11-10&to=2026-11-01" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 400', () => pm.response.to.have.status(400));",
+            "pm.test('INVALID_DATE_RANGE', () => pm.expect(pm.response.json().code).to.eql('INVALID_DATE_RANGE'));"
+          ] } }]
+        },
+        {
+          "name": "Range over 366 days → 400",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/admin/stats/timeseries?from=2024-01-01&to=2026-01-01" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('status 400', () => pm.response.to.have.status(400));",
+            "pm.test('DATE_RANGE_TOO_LARGE', () => pm.expect(pm.response.json().code).to.eql('DATE_RANGE_TOO_LARGE'));"
+          ] } }]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+package com.mentormatching.notification.config;
+
+import com.mentormatching.notification.security.ProblemAccessDeniedHandler;
+import com.mentormatching.notification.security.ProblemAuthenticationEntryPoint;
+
+import jakarta.servlet.DispatcherType;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfigurationSource;
+
+/**
+ * Bảo vệ HTTP API bằng Bearer JWT (RS256), không session, không HTTP Basic/form login.
+ * Chỉ health probe là công khai; mọi request khác phải có token hợp lệ.
+ *
+ * <p>Handshake STOMP {@code /ws/notifications} được cho qua ở tầng HTTP (trình duyệt không gửi được
+ * header Authorization khi mở WebSocket); origin vẫn được kiểm tra ở endpoint và JWT được kiểm tra ở frame
+ * CONNECT bởi {@code StompAuthChannelInterceptor} với cùng JwtDecoder/converter như HTTP.
+ */
+@Configuration
+@EnableMethodSecurity
+public class SecurityConfiguration {
+
+    /** Chuyển claim {@code roles} thành authorities với tiền tố ROLE_. */
+    @Bean
+    JwtGrantedAuthoritiesConverter jwtGrantedAuthoritiesConverter() {
+        var converter = new JwtGrantedAuthoritiesConverter();
+        converter.setAuthoritiesClaimName("roles");
+        converter.setAuthorityPrefix("ROLE_");
+        return converter;
+    }
+
+    /** Một converter JWT → Authentication dùng chung cho HTTP và STOMP CONNECT (tên = sub, roles → ROLE_*). */
+    @Bean
+    JwtAuthenticationConverter jwtAuthenticationConverter(JwtGrantedAuthoritiesConverter authorities) {
+        var authentication = new JwtAuthenticationConverter();
+        authentication.setJwtGrantedAuthoritiesConverter(authorities);
+        return authentication;
+    }
+
+    @Bean
+    SecurityFilterChain securityFilterChain(HttpSecurity http, ProblemAuthenticationEntryPoint entryPoint,
+                                            ProblemAccessDeniedHandler deniedHandler,
+                                            CorsConfigurationSource corsConfigurationSource,
+                                            JwtAuthenticationConverter authentication) throws Exception {
+        return http
+                .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
+                        // Handshake WebSocket: xác thực ở frame STOMP CONNECT, không ở HTTP.
+                        .requestMatchers(HttpMethod.GET, WebSocketConfiguration.ENDPOINT).permitAll()
+                        .anyRequest().authenticated())
+                .exceptionHandling(errors -> errors
+                        .authenticationEntryPoint(entryPoint)
+                        .accessDeniedHandler(deniedHandler))
+                .oauth2ResourceServer(resource -> resource
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(authentication))
+                        .authenticationEntryPoint(entryPoint)
+                        .accessDeniedHandler(deniedHandler))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
+                // Token chỉ nhận qua Authorization header (không cookie) nên CSRF không áp dụng.
+                .csrf(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
+                .logout(AbstractHttpConfigurer::disable)
+                .requestCache(AbstractHttpConfigurer::disable)
+                .build();
+    }
+}
