@@ -18,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class RefreshTokenUseCase {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(RefreshTokenUseCase.class);
+
     private final RefreshTokenRepository refreshTokenRepository;
     private final AccountRoleRepository accountRoleRepository;
     private final TokenService tokenService;
@@ -35,7 +37,7 @@ public class RefreshTokenUseCase {
      * @param rawToken refresh token gốc từ client
      * @return cặp token mới
      */
-    @Transactional
+    @Transactional(noRollbackFor = ApiException.class) // việc thu hồi cả họ token phải được commit dù trả 401
     public IssuedTokens refresh(String rawToken) {
 
         // Token do service phát hành là 32 byte được mã hóa Base64URL không padding.
@@ -45,8 +47,15 @@ public class RefreshTokenUseCase {
 
         var current = refreshTokenRepository.findLockedByTokenHash(TokenService.hashRefreshToken(rawToken)).orElseThrow(RefreshTokenUseCase::invalidToken);
 
-        if (current.getRevokedAt() != null || !current.getExpiresAt().isAfter(Instant.now())
-                || current.getAccount().getStatus() != AccountStatus.ACTIVE) {
+        if (current.getRevokedAt() != null) {
+            // Token đã xoay hoặc đã thu hồi mà vẫn được gửi lại: có thể đã bị đánh cắp.
+            // Thu hồi toàn bộ họ token (cả token mới nhất mà kẻ gian hoặc người dùng đang giữ).
+            int revoked = refreshTokenRepository.revokeFamily(current.getFamilyId(), Instant.now());
+            log.warn("Refresh token reuse detected accountId={} familyId={} revokedTokens={}",
+                    current.getAccount().getId(), current.getFamilyId(), revoked);
+            throw invalidToken();
+        }
+        if (!current.getExpiresAt().isAfter(Instant.now()) || current.getAccount().getStatus() != AccountStatus.ACTIVE) {
             throw invalidToken();
         }
 
