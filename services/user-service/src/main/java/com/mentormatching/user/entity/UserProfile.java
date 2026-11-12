@@ -30,6 +30,10 @@ public class UserProfile {
     @Column(name = "user_id", nullable = false, updatable = false, columnDefinition = "BINARY(16)")
     private UUID userId;
 
+    /** Bản sao email đăng nhập lấy từ sự kiện AccountRegistered của auth-service (auth là nguồn gốc). */
+    @Column(name = "email", length = 254)
+    private String email;
+
     @Column(name = "full_name", length = 255)
     private String fullName;
 
