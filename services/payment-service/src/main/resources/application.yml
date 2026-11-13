@@ -65,8 +65,8 @@ payment:
   stripe:
     secret-key: ${STRIPE_SECRET_KEY:}
     webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
-    success-url: ${STRIPE_SUCCESS_URL:http://localhost:5173/payments/success?session_id={CHECKOUT_SESSION_ID}}
-    cancel-url: ${STRIPE_CANCEL_URL:http://localhost:5173/payments/cancel}
+    success-url: ${STRIPE_SUCCESS_URL:http://localhost:5173/payment/success?session_id={CHECKOUT_SESSION_ID}}
+    cancel-url: ${STRIPE_CANCEL_URL:http://localhost:5173/payment/cancel}
     reconcile-after: ${PAYMENT_RECONCILE_AFTER:PT30M}
   messaging:
     enabled: ${PAYMENT_MESSAGING_ENABLED:true}

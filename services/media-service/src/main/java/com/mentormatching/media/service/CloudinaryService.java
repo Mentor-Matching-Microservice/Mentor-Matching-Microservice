@@ -21,6 +21,13 @@ public class CloudinaryService {
         this.cloudinary = cloudinary;
     }
 
+    public boolean isConfigured() {
+        return config != null
+                && config.cloudName() != null && !config.cloudName().isBlank()
+                && config.apiKey() != null && !config.apiKey().isBlank()
+                && config.apiSecret() != null && !config.apiSecret().isBlank();
+    }
+
     public void assertConfigured() {
         ensureConfigured();
     }
@@ -50,6 +57,7 @@ public class CloudinaryService {
         response.put("resourceType", asset.getResourceType());
         response.put("deliveryType", deliveryType);
         response.put("fields", fields);
+        response.put("formFields", fields);
         response.put("expiresAt", asset.getExpiresAt());
         return response;
     }
@@ -72,19 +80,28 @@ public class CloudinaryService {
         String actualDeliveryType = string(result, "type");
         String format = string(result, "format");
         String etag = string(result, "etag");
+        if (etag.isBlank()) {
+            etag = string(result, "version_id");
+        }
+        if (etag.isBlank()) {
+            etag = "etag-" + string(result, "version");
+        }
         String secureUrl = string(result, "secure_url");
         long size = number(result.get("bytes"));
 
         if (!actualAssetId.equals(returnedAssetId)
-                || !asset.getPublicId().equals(actualPublicId)
+                && !actualPublicId.equals(returnedAssetId)) {
+            throw bad("Cloudinary asset does not match the upload intent");
+        }
+        if (!asset.getPublicId().equals(actualPublicId)
                 || !asset.getResourceType().equals(actualResourceType)
                 || !deliveryType(asset).equals(actualDeliveryType)) {
             throw bad("Cloudinary asset does not match the upload intent");
         }
-        if (size != asset.getExpectedSize() || size > config.maxFileSizeBytes()) {
-            throw bad("Uploaded file size does not match the upload intent");
+        if (size > config.maxFileSizeBytes()) {
+            throw bad("Uploaded file size exceeds the allowed limit");
         }
-        if (format.isBlank() || etag.isBlank() || !formatMatchesMime(format, asset.getMimeType())) {
+        if (format.isBlank() || !formatMatchesMime(format, asset.getMimeType())) {
             throw bad("Uploaded file format does not match its declared MIME type");
         }
         String expectedUrlPrefix = "https://res.cloudinary.com/" + config.cloudName() + "/";

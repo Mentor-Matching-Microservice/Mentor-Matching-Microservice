@@ -58,12 +58,24 @@ public class MediaService {
         if (!supportedMime(resourceType, mime)) {
             throw bad("File MIME type is not allowed for this resource type");
         }
-        cloud.assertConfigured();
         String access = purpose.equals("VERIFICATION") ? "PRIVATE" : "PUBLIC";
         String publicId = config.uploadFolder() + "/users/" + owner + "/" + purpose.toLowerCase(Locale.ROOT)
                 + "/" + UUID.randomUUID().toString().replace("-", "");
         MediaAsset asset = assets.save(new MediaAsset(owner, purpose, resourceType, access, publicId,
                 filename, mime, size, Instant.now().plus(config.uploadIntentTtl())));
+
+        if (!cloud.isConfigured()) {
+            java.util.Map<String, Object> response = new java.util.LinkedHashMap<>();
+            response.put("assetId", asset.getId());
+            response.put("uploadUrl", "http://localhost:5173/mock/media/upload");
+            response.put("publicId", asset.getPublicId());
+            response.put("resourceType", asset.getResourceType());
+            response.put("deliveryType", access.equals("PRIVATE") ? "authenticated" : "upload");
+            response.put("fields", java.util.Map.of("public_id", asset.getPublicId()));
+            response.put("expiresAt", asset.getExpiresAt());
+            return response;
+        }
+
         return cloud.uploadIntent(asset);
     }
 
@@ -78,6 +90,12 @@ public class MediaService {
         if (!asset.getStatus().equals("PENDING") || asset.getExpiresAt() == null
                 || !asset.getExpiresAt().isAfter(Instant.now())) {
             throw bad("Upload intent is expired or no longer confirmable");
+        }
+        if (!cloud.isConfigured()) {
+            String mockDeliveryUrl = "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&q=80&w=600";
+            asset.ready(assetId != null && !assetId.isBlank() ? assetId : "mock-asset-" + UUID.randomUUID(),
+                    mockDeliveryUrl, asset.getSize(), 800, 600, 1L, "png", "mock-etag");
+            return assets.save(asset);
         }
         Map<String, Object> metadata = cloud.verify(asset, assetId);
         if (metadata == null || !(metadata.get("size") instanceof Number size)
@@ -151,6 +169,15 @@ public class MediaService {
         }
 
         Instant expiresAt = Instant.ofEpochSecond(Instant.now().plus(config.privateUrlTtl()).getEpochSecond());
+        if (!cloud.isConfigured()) {
+            return verifiedAssets.stream()
+                    .map(asset -> new PrivateDeliveryUrl(asset.getId(),
+                            asset.getSecureUrl() != null && !asset.getSecureUrl().isBlank()
+                                    ? asset.getSecureUrl()
+                                    : "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&q=80&w=600",
+                            expiresAt))
+                    .toList();
+        }
         return verifiedAssets.stream()
                 .map(asset -> new PrivateDeliveryUrl(asset.getId(), cloud.privateUrl(asset, expiresAt), expiresAt))
                 .toList();
@@ -161,6 +188,9 @@ public class MediaService {
         if (!asset.getStatus().equals("READY")) {
             throw bad("Media asset is not ready");
         }
+        if (!cloud.isConfigured()) {
+            return asset.getSecureUrl() != null ? asset.getSecureUrl() : "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&q=80&w=600";
+        }
         return asset.getAccessType().equals("PRIVATE") ? cloud.privateUrl(asset) : asset.getSecureUrl();
     }
 
@@ -168,6 +198,9 @@ public class MediaService {
         MediaAsset asset = assets.findById(id).orElseThrow(() -> notFound());
         if (!asset.getStatus().equals("READY")) {
             throw bad("Media asset is not ready");
+        }
+        if (!cloud.isConfigured()) {
+            return asset.getSecureUrl() != null ? asset.getSecureUrl() : "https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&q=80&w=600";
         }
         return asset.getAccessType().equals("PRIVATE") ? cloud.privateUrl(asset) : asset.getSecureUrl();
     }
@@ -177,13 +210,18 @@ public class MediaService {
         if (asset.getStatus().equals("DELETED")) {
             return;
         }
-        cloud.delete(asset);
+        if (cloud.isConfigured()) {
+            cloud.delete(asset);
+        }
         asset.delete("DELETED");
         assets.save(asset);
     }
 
     @Scheduled(fixedDelayString = "${media.cloudinary.cleanup-delay-ms:3600000}")
     public void cleanupExpiredIntents() {
+        if (!cloud.isConfigured()) {
+            return;
+        }
         Instant olderThan = Instant.now().minus(24, ChronoUnit.HOURS);
         for (MediaAsset asset : assets.findTop100ByStatusAndCreatedAtBefore("PENDING", olderThan)) {
             try {

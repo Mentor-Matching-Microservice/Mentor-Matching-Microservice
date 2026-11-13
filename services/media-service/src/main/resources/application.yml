@@ -10,9 +10,9 @@ spring:
       auto-index-creation: false
 media:
   cloudinary:
-    cloud-name: ${CLOUDINARY_CLOUD_NAME:}
-    api-key: ${CLOUDINARY_API_KEY:}
-    api-secret: ${CLOUDINARY_API_SECRET:}
+    cloud-name: ${CLOUDINARY_CLOUD_NAME:jev4yy97}
+    api-key: ${CLOUDINARY_API_KEY:478259159718159}
+    api-secret: ${CLOUDINARY_API_SECRET:fVZGU2mhsM7dei6wd-HlvxMCBO0}
     upload-folder: ${CLOUDINARY_UPLOAD_FOLDER:mentor-matching}
     max-file-size-bytes: ${MEDIA_MAX_FILE_SIZE_BYTES:5242880}
     upload-intent-ttl: ${MEDIA_UPLOAD_INTENT_TTL:PT30M}
