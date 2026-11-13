@@ -17,7 +17,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /** Removes client-supplied identity and internal metadata before proxying requests. */
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 2)
+@Order(Ordered.HIGHEST_PRECEDENCE + 3)
 public class StripUntrustedInternalHeadersFilter extends OncePerRequestFilter {
 
     @Override

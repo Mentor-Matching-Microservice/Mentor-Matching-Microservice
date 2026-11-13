@@ -26,7 +26,7 @@ public class GatewayCorsConfig {
         var source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", cors);
         var registration = new FilterRegistrationBean<>(new CorsFilter(source));
-        registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
         return registration;
     }
 }

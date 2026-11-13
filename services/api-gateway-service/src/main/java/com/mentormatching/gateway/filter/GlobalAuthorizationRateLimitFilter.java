@@ -23,7 +23,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /** Applies a lightweight Bearer JWT shape check and a shared Redis request limit to API traffic. */
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 1)
+@Order(Ordered.HIGHEST_PRECEDENCE + 2)
 public class GlobalAuthorizationRateLimitFilter extends OncePerRequestFilter {
 
     private static final Pattern COMPACT_JWT = Pattern.compile(
