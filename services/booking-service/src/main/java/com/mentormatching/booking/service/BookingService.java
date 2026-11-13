@@ -132,8 +132,8 @@ public class BookingService {
 
         ensureMentorOwnership(mentorUserId, booking);
 
-        if (booking.getStatus() != BookingStatus.PENDING) {
-            throw ApiException.badRequest("Only pending booking can be rejected");
+        if (booking.getStatus() != BookingStatus.PENDING && booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw ApiException.badRequest("Only pending or confirmed booking can be rejected");
         }
 
         LocalDateTime now = LocalDateTime.now(clock);
@@ -165,10 +165,6 @@ public class BookingService {
         }
 
         LocalDateTime now = LocalDateTime.now(clock);
-        LocalDateTime sessionEnd = LocalDateTime.of(booking.getBookingDate(), booking.getEndTime());
-        if (!now.isAfter(sessionEnd)) {
-            throw ApiException.badRequest("Booking can only be completed after the session end time");
-        }
 
         booking.setStatus(BookingStatus.COMPLETED);
         booking.setUpdatedAt(now);
