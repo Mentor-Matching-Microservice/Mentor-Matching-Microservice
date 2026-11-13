@@ -114,15 +114,22 @@ public class SchedulingService {
     private void checkOverlappingAvailability(Long mentorId, AvailabilityType availabilityType, Integer dayOfWeek,
                                               LocalDate availableDate, LocalTime startTime, LocalTime endTime,
                                               Long excludeId) {
+        List<MentorAvailability> existing = mentorAvailabilityRepository.findByMentorId(mentorId);
         if (availabilityType == AvailabilityType.RECURRING) {
-            boolean overlaps = mentorAvailabilityRepository.existsOverlappingRecurring(
-                    mentorId, dayOfWeek, startTime, endTime, excludeId);
+            boolean overlaps = existing.stream()
+                    .filter(a -> a.getAvailabilityType() == AvailabilityType.RECURRING)
+                    .filter(a -> dayOfWeek != null && dayOfWeek.equals(a.getDayOfWeek()))
+                    .filter(a -> excludeId == null || !excludeId.equals(a.getId()))
+                    .anyMatch(a -> a.getStartTime().isBefore(endTime) && a.getEndTime().isAfter(startTime));
             if (overlaps) {
                 throw ApiException.conflict("Recurring availability window overlaps with an existing availability window");
             }
         } else if (availabilityType == AvailabilityType.SPECIFIC_DATE) {
-            boolean overlaps = mentorAvailabilityRepository.existsOverlappingSpecificDate(
-                    mentorId, availableDate, startTime, endTime, excludeId);
+            boolean overlaps = existing.stream()
+                    .filter(a -> a.getAvailabilityType() == AvailabilityType.SPECIFIC_DATE)
+                    .filter(a -> availableDate != null && availableDate.equals(a.getAvailableDate()))
+                    .filter(a -> excludeId == null || !excludeId.equals(a.getId()))
+                    .anyMatch(a -> a.getStartTime().isBefore(endTime) && a.getEndTime().isAfter(startTime));
             if (overlaps) {
                 throw ApiException.conflict("Specific date availability window overlaps with an existing availability window");
             }
@@ -130,6 +137,13 @@ public class SchedulingService {
     }
 
     private void ensureOwnership(String userId, MentorAvailability availability) {
+        if (availability.getMentorUserId() != null && availability.getMentorUserId().equals(userId)) {
+            return;
+        }
+        MentorProfileSummary summary = mentorLookupClient.getMentorByUserId(userId);
+        if (summary != null && summary.mentorId() != null && summary.mentorId().equals(availability.getMentorId())) {
+            return;
+        }
         if (availability.getMentorUserId() != null && !availability.getMentorUserId().equals(userId)) {
             throw ApiException.notFound("Mentor availability not found");
         }
