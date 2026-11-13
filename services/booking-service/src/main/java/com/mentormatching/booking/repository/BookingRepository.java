@@ -18,9 +18,13 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
 
     List<Booking> findByStudentUserId(String studentUserId);
 
+    List<Booking> findByStudentUserIdOrderByCreatedAtDescIdDesc(String studentUserId);
+
     List<Booking> findByMentorId(Long mentorId);
 
     List<Booking> findByMentorUserId(String mentorUserId);
+
+    List<Booking> findByMentorUserIdOrderByCreatedAtDescIdDesc(String mentorUserId);
 
     List<Booking> findByStatus(BookingStatus status);
 

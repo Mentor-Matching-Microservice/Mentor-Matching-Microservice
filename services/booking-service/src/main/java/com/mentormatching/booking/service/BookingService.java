@@ -229,14 +229,14 @@ public class BookingService {
 
     @Transactional(readOnly = true)
     public List<CreateBookingResponse> getMyBookings(String studentUserId) {
-        return bookingRepository.findByStudentUserId(studentUserId).stream()
+        return bookingRepository.findByStudentUserIdOrderByCreatedAtDescIdDesc(studentUserId).stream()
                 .map(CreateBookingResponse::from)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public List<CreateBookingResponse> getMentorBookings(String mentorUserId) {
-        return bookingRepository.findByMentorUserId(mentorUserId).stream()
+        return bookingRepository.findByMentorUserIdOrderByCreatedAtDescIdDesc(mentorUserId).stream()
                 .map(CreateBookingResponse::from)
                 .toList();
     }
