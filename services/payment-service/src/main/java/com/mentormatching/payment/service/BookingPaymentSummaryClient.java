@@ -3,6 +3,7 @@ package com.mentormatching.payment.service;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.HttpClientErrorException;
@@ -19,6 +20,7 @@ public class BookingPaymentSummaryClient {
     private final RestClient http;
     private final ObjectMapper objectMapper;
 
+    @Autowired
     public BookingPaymentSummaryClient(PaymentProperties config, ObjectMapper objectMapper) {
         this(config, objectMapper, RestClient.builder().build());
     }

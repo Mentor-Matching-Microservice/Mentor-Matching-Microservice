@@ -7,7 +7,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/mm_auth}
     username: ${DB_USERNAME:mm_auth}
-    password: ${DB_PASSWORD}
+    password: ${DB_PASSWORD:mm_dev_password}
   jpa:
     open-in-view: false
     hibernate:
@@ -59,10 +59,10 @@ auth:
       token: ${AUTH_INTERNAL_ACCOUNT_SYNC_TOKEN:}
   jwt:
     issuer: ${AUTH_JWT_ISSUER:auth-service}
-    audience: ${AUTH_JWT_AUDIENCE}
+    audience: ${AUTH_JWT_AUDIENCE:mentor-matching-api}
     access-ttl: ${AUTH_JWT_ACCESS_TTL:15m}
     refresh-ttl: ${AUTH_JWT_REFRESH_TTL:30d}
-    private-key-path: ${AUTH_JWT_PRIVATE_KEY_PATH}
+    private-key-path: ${AUTH_JWT_PRIVATE_KEY_PATH:jwt-keys/private.pem}
   cors:
     allowed-origins: ${AUTH_CORS_ALLOWED_ORIGINS:http://localhost:5173}
   tokens:

@@ -42,6 +42,6 @@ management:
 
 discovery:
   security:
-    # Required. Empty defaults make startup fail with a clear message instead of using a built-in credential.
-    username: ${DISCOVERY_USERNAME:}
-    password: ${DISCOVERY_PASSWORD:}
+    # Development defaults so the service can start locally without manual exports.
+    username: ${DISCOVERY_USERNAME:eureka-admin}
+    password: ${DISCOVERY_PASSWORD:eureka-dev-secret-password-2026}

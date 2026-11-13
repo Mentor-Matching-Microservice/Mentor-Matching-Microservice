@@ -70,7 +70,7 @@ services:
         - CMD-SHELL
         - >-
           mongosh --quiet --eval
-          'try { const cfg = rs.conf(); if (cfg.members[0].host !== "mongodb:27017") { cfg.members[0].host = "mongodb:27017"; rs.reconfig(cfg, {force:true}); } rs.status().ok } catch (e) { rs.initiate({_id:"rs0",members:[{_id:0,host:"mongodb:27017"}]}).ok }'
+          'try { const cfg = rs.conf(); if (cfg.members[0].host !== "localhost:27017") { cfg.members[0].host = "localhost:27017"; rs.reconfig(cfg, {force:true}); } rs.status().ok } catch (e) { rs.initiate({_id:"rs0",members:[{_id:0,host:"localhost:27017"}]}).ok }'
       interval: 10s
       timeout: 10s
       retries: 12
