@@ -57,9 +57,14 @@ public class UpsertCurrentMentorVerificationUseCase {
         var profile = mentorProfileRepository.findByUserId(userId).orElseGet(() -> {
             var created = new MentorProfile();
             created.setUserId(userId);
+            created.setFullName(command.fullName());
             created.setAvatarUrl("");
             return mentorProfileRepository.saveAndFlush(created);
         });
+        if (profile.getFullName() == null || profile.getFullName().isBlank()) {
+            profile.setFullName(command.fullName());
+            profile = mentorProfileRepository.saveAndFlush(profile);
+        }
 
         var existing = mentorVerificationRepository.findByMentorId(profile.getId());
         if (existing.isPresent() && existing.get().getVerificationStatus() != MentorVerificationStatus.REJECTED) {
