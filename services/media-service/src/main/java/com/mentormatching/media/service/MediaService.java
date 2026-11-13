@@ -119,9 +119,18 @@ public class MediaService {
         if (!ALLOWED_CONSUMERS.contains(normalizedConsumer)) {
             throw bad("Unsupported media consumer");
         }
-        String normalizedReferenceId = canonicalUuid(referenceId, "referenceId");
+        String normalizedReferenceId = normalizeReferenceId(referenceId);
 
-        MediaAsset asset = assets.findById(mediaAssetId).orElseThrow(() -> notFound());
+        MediaAsset asset = assets.findById(mediaAssetId)
+                .orElseGet(() -> mongo.findOne(
+                        Query.query(new Criteria().orOperator(
+                                Criteria.where("assetId").is(mediaAssetId),
+                                Criteria.where("publicId").is(mediaAssetId))
+                                .and("ownerId").is(ownerId)),
+                        MediaAsset.class));
+        if (asset == null) {
+            throw notFound();
+        }
         if (!asset.getOwnerId().equals(ownerId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "Media asset does not belong to uploadedByUserId");
@@ -136,7 +145,7 @@ public class MediaService {
         }
 
         String usageKey = normalizedConsumer + ":" + normalizedReferenceId;
-        Query query = Query.query(Criteria.where("_id").is(mediaAssetId)
+        Query query = Query.query(Criteria.where("_id").is(asset.getId())
                 .and("ownerId").is(ownerId)
                 .and("purpose").is(normalizedPurpose)
                 .and("status").is("READY"));
@@ -252,6 +261,18 @@ public class MediaService {
             return UUID.fromString(value).toString();
         } catch (RuntimeException exception) {
             throw bad(field + " must be a UUID");
+        }
+    }
+
+    private static String normalizeReferenceId(String value) {
+        if (value == null || value.isBlank()) {
+            throw bad("referenceId must not be blank");
+        }
+        String trimmed = value.trim();
+        try {
+            return UUID.fromString(trimmed).toString();
+        } catch (RuntimeException ignored) {
+            return trimmed;
         }
     }
 

@@ -29,9 +29,18 @@ public class MediaInternalController {
         MediaAsset asset = service.verifyAndAttach(request.mediaAssetId(), request.uploadedByUserId(),
                 request.purpose(), request.consumer(), request.referenceId());
         String consumer = request.consumer().toLowerCase(Locale.ROOT);
-        String referenceId = UUID.fromString(request.referenceId()).toString();
+        String referenceId = normalizeReferenceId(request.referenceId());
         return new MediaRequests.UsageResponse(asset.getId(), asset.getOwnerId(), asset.getPurpose(),
                 asset.getStatus(), consumer, referenceId, consumer + ":" + referenceId);
+    }
+
+    private static String normalizeReferenceId(String value) {
+        String trimmed = value == null ? "" : value.trim();
+        try {
+            return UUID.fromString(trimmed).toString();
+        } catch (RuntimeException ignored) {
+            return trimmed;
+        }
     }
 
     @PostMapping("/private-delivery-urls")
