@@ -106,12 +106,26 @@ public class PaymentService {
                     booking.totalAmount(), booking.currency(), key));
         }
 
-        Session session = stripe.checkout(payment);
-        Instant expiry = session.getExpiresAt() == null ? null : Instant.ofEpochSecond(session.getExpiresAt());
-        payment.checkout(session.getId(), session.getUrl(), expiry);
-        attempts.save(new PaymentAttempt(payment.getId(), payment.getCheckoutAttempt(), session.getId(),
-                session.getUrl(), expiry));
-        return payments.save(payment);
+        if (stripe.isConfigured()) {
+            Session session = stripe.checkout(payment);
+            Instant expiry = session.getExpiresAt() == null ? null : Instant.ofEpochSecond(session.getExpiresAt());
+            payment.checkout(session.getId(), session.getUrl(), expiry);
+            attempts.save(new PaymentAttempt(payment.getId(), payment.getCheckoutAttempt(), session.getId(),
+                    session.getUrl(), expiry));
+            return payments.save(payment);
+        }
+
+        // Development / mock checkout when Stripe key is not configured
+        String mockSessionId = "cs_dev_" + payment.getId().toString().replace("-", "");
+        String mockCheckoutUrl = stripe.getSuccessUrl(mockSessionId, payment.getId());
+        Instant expiry = Instant.now().plus(java.time.Duration.ofMinutes(30));
+        payment.checkout(mockSessionId, mockCheckoutUrl, expiry);
+        attempts.save(new PaymentAttempt(payment.getId(), payment.getCheckoutAttempt(), mockSessionId,
+                mockCheckoutUrl, expiry));
+        payment.paid("pi_dev_" + payment.getId().toString().replace("-", ""));
+        Payment saved = payments.save(payment);
+        outbox.record("PaymentSucceeded", saved, "Development mock payment completed");
+        return saved;
     }
 
     @Transactional(readOnly = true)
@@ -157,6 +171,13 @@ public class PaymentService {
         BigDecimal amount = requestedAmount == null ? remaining : requestedAmount;
         if (amount.signum() <= 0 || amount.compareTo(remaining) > 0 || amount.scale() > 2) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Refund amount is invalid");
+        }
+        if (!stripe.isConfigured()) {
+            payment.refund(amount);
+            payments.save(payment);
+            refunds.save(new RefundTransaction(payment.getId(), idempotencyKey, "re_dev_" + payment.getId(), amount));
+            outbox.record("PaymentRefunded", payment, reason);
+            return payment;
         }
         var providerRefund = stripe.refund(payment, amount, idempotencyKey, reason);
         payment.refund(amount);
@@ -283,7 +304,7 @@ public class PaymentService {
     @Transactional
     public void reconcileExpiredCheckouts() {
         for (Payment payment : payments.findTop100ByStatusAndExpiresAtBefore(PaymentStatus.PENDING, Instant.now())) {
-            if (payment.getProviderReferenceId() == null) continue;
+            if (payment.getProviderReferenceId() == null || payment.getProviderReferenceId().startsWith("cs_dev_")) continue;
             try {
                 Session session = stripe.retrieve(payment.getProviderReferenceId());
                 PaymentAttempt attempt = attempts.findByProviderReferenceId(session.getId()).orElse(null);

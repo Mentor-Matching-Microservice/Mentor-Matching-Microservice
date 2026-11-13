@@ -43,8 +43,34 @@ public class StripePaymentClient {
         try{return Refund.create(builder.build(),options("refund:"+idempotencyKey));}
         catch(StripeException e){throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,"Stripe refund failed",e);}
     }
-    public Session retrieve(String sessionId){ensureKey();try{return Session.retrieve(sessionId,options(null));}catch(StripeException e){throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,"Stripe session retrieval failed",e);}}
-    public String webhookSecret(){return config.webhookSecret();}
+    public boolean isConfigured() {
+        return config != null && config.secretKey() != null && !config.secretKey().isBlank()
+                && !config.secretKey().startsWith("mock");
+    }
+
+    public String getSuccessUrl(String sessionId, java.util.UUID paymentId) {
+        String base = (config != null && config.successUrl() != null && !config.successUrl().isBlank())
+                ? config.successUrl()
+                : "http://localhost:5173/payments/success?session_id={CHECKOUT_SESSION_ID}";
+        String resolved = base.replace("{CHECKOUT_SESSION_ID}", sessionId != null ? sessionId : "");
+        return resolved + (resolved.contains("?") ? "&" : "?") + "payment_id=" + paymentId;
+    }
+
+    public Session retrieve(String sessionId) {
+        if (!isConfigured() || (sessionId != null && sessionId.startsWith("cs_dev_"))) {
+            return null;
+        }
+        ensureKey();
+        try {
+            return Session.retrieve(sessionId, options(null));
+        } catch (StripeException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Stripe session retrieval failed", e);
+        }
+    }
+
+    public String webhookSecret() {
+        return config != null ? config.webhookSecret() : null;
+    }
     private RequestOptions options(String key){RequestOptions.RequestOptionsBuilder b=RequestOptions.builder().setApiKey(config.secretKey());if(key!=null)b.setIdempotencyKey(key);return b.build();}
     private void ensureKey(){if(config==null||config.secretKey()==null||config.secretKey().isBlank())throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Stripe is not configured");}
     static long toMinorUnits(BigDecimal amount,String currency){
