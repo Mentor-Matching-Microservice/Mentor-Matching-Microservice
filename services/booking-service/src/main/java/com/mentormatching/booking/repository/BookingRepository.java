@@ -44,26 +44,34 @@ public interface BookingRepository extends JpaRepository<Booking, Long>, JpaSpec
             @Param("to") LocalDate to,
             @Param("statuses") List<BookingStatus> statuses);
 
-    @Query("""
-            SELECT COUNT(b) > 0
-            FROM Booking b
-            WHERE b.mentorId = :mentorId
-              AND b.bookingDate = :bookingDate
+    @Query(value = """
+            SELECT COUNT(*)
+            FROM bookings b
+            WHERE b.mentor_id = :mentorId
+              AND b.booking_date = :bookingDate
               AND (
-                  b.status = com.mentormatching.booking.entity.BookingStatus.CONFIRMED
+                  b.status = 'CONFIRMED'
                   OR (
-                      b.status = com.mentormatching.booking.entity.BookingStatus.PENDING
-                      AND (b.holdExpiresAt IS NULL OR b.holdExpiresAt > CURRENT_TIMESTAMP)
+                      b.status = 'PENDING'
+                      AND (b.hold_expires_at IS NULL OR b.hold_expires_at > CURRENT_TIMESTAMP)
                   )
               )
-              AND b.startTime < :endTime
-              AND b.endTime > :startTime
-            """)
-    boolean existsOverlappingActiveBooking(
+              AND b.start_time < CAST(:endTime AS TIME)
+              AND b.end_time > CAST(:startTime AS TIME)
+            """, nativeQuery = true)
+    long countOverlappingActiveBookings(
             @Param("mentorId") Long mentorId,
             @Param("bookingDate") LocalDate bookingDate,
             @Param("startTime") LocalTime startTime,
             @Param("endTime") LocalTime endTime);
+
+    default boolean existsOverlappingActiveBooking(
+            Long mentorId,
+            LocalDate bookingDate,
+            LocalTime startTime,
+            LocalTime endTime) {
+        return countOverlappingActiveBookings(mentorId, bookingDate, startTime, endTime) > 0;
+    }
 
     @Query("""
             SELECT b
